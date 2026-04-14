@@ -1,0 +1,339 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Church {
+  id               String   @id @default(cuid())
+  name             String
+  slug             String   @unique
+  logoUrl          String?
+  primaryColor     String   @default("#2563eb")
+  secondaryColor   String   @default("#1e40af")
+  pixKey           String?
+  cpfCnpj          String?  @unique
+  asaasAccountId   String?
+  asaasApiKey      String?
+  whatsappInstance String?
+  plan             Plan     @default(BASIC)
+  active           Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  members       Member[]
+  tithes        Tithe[]
+  offerings     Offering[]
+  schedules     Schedule[]
+  announcements Announcement[]
+  visitors      Visitor[]
+  missions      Mission[]
+  beneficiaries Beneficiary[]
+  events        Event[]
+  groups        Group[]
+  expenses      Expense[]
+  incomesManual IncomeManual[]
+}
+
+model Member {
+  id             String     @id @default(cuid())
+  churchId       String
+  name           String
+  phone          String
+  cpfCnpj        String?
+  email          String?
+  group          String?
+  role           MemberRole @default(MEMBER)
+  active         Boolean    @default(true)
+  isTither       Boolean    @default(true)
+  suggestedTithe Float?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  church        Church         @relation(fields: [churchId], references: [id])
+  tithes        Tithe[]
+  scheduleItems ScheduleItem[]
+  attendances   Attendance[]
+  eventAttendees EventAttendee[]
+}
+
+model Tithe {
+  id            String      @id @default(cuid())
+  churchId      String
+  memberId      String
+  amount        Float
+  month         Int
+  year          Int
+  status        TitheStatus @default(PENDING)
+  asaasChargeId String?
+  qrCodeBase64  String?     @db.LongText
+  paidAt        DateTime?
+  createdAt     DateTime    @default(now())
+
+  church Church @relation(fields: [churchId], references: [id])
+  member Member @relation(fields: [memberId], references: [id])
+}
+
+model Offering {
+  id        String   @id @default(cuid())
+  churchId  String
+  type      String
+  amount    Float
+  pixTxId   String?
+  createdAt DateTime @default(now())
+
+  church Church @relation(fields: [churchId], references: [id])
+}
+
+model Schedule {
+  id              String   @id @default(cuid())
+  churchId        String
+  title           String
+  date            DateTime
+  department      String
+  sentViaWhatsapp Boolean  @default(false)
+  createdAt       DateTime @default(now())
+
+  church Church         @relation(fields: [churchId], references: [id])
+  items  ScheduleItem[]
+}
+
+model ScheduleItem {
+  id         String  @id @default(cuid())
+  scheduleId String
+  memberId   String
+  role       String
+  confirmed  Boolean @default(false)
+
+  schedule Schedule @relation(fields: [scheduleId], references: [id])
+  member   Member   @relation(fields: [memberId], references: [id])
+}
+
+model Attendance {
+  id       String   @id @default(cuid())
+  churchId String
+  memberId String
+  date     DateTime
+  type     String
+
+  member Member @relation(fields: [memberId], references: [id])
+}
+
+model Announcement {
+  id             String    @id @default(cuid())
+  churchId       String
+  title          String
+  body           String    @db.Text
+  imageUrl       String?
+  sentAt         DateTime?
+  recipientCount Int       @default(0)
+  createdAt      DateTime  @default(now())
+
+  church Church @relation(fields: [churchId], references: [id])
+}
+
+model Visitor {
+  id             String        @id @default(cuid())
+  churchId       String
+  name           String
+  phone          String
+  invitedBy      String?
+  howFound       String?
+  visits         Int           @default(1)
+  lastVisit      DateTime      @default(now())
+  status         VisitorStatus @default(NEW)
+  wantsHomeVisit Boolean       @default(false)
+  surveyAnswers  Json?
+  createdAt      DateTime      @default(now())
+
+  church   Church           @relation(fields: [churchId], references: [id])
+  contacts VisitorContact[]
+}
+
+model VisitorContact {
+  id        String   @id @default(cuid())
+  visitorId String
+  message   String   @db.Text
+  sentAt    DateTime @default(now())
+  type      String
+
+  visitor Visitor @relation(fields: [visitorId], references: [id])
+}
+
+model Mission {
+  id           String   @id @default(cuid())
+  churchId     String
+  title        String
+  description  String?  @db.Text
+  deliveryDate DateTime
+  createdAt    DateTime @default(now())
+
+  church Church        @relation(fields: [churchId], references: [id])
+  items  MissionItem[]
+}
+
+model MissionItem {
+  id        String @id @default(cuid())
+  missionId String
+  name      String
+  quantity  Int    @default(1)
+  committed Int    @default(0)
+
+  mission   Mission        @relation(fields: [missionId], references: [id])
+  donations MissionDonor[]
+}
+
+model MissionDonor {
+  id            String   @id @default(cuid())
+  missionItemId String
+  donorName     String
+  donorPhone    String
+  createdAt     DateTime @default(now())
+
+  item MissionItem @relation(fields: [missionItemId], references: [id])
+}
+
+model Beneficiary {
+  id           String    @id @default(cuid())
+  churchId     String
+  name         String
+  phone        String
+  familySize   Int       @default(1)
+  need         String?   @db.Text
+  startDate    DateTime  @default(now())
+  endDate      DateTime?
+  active       Boolean   @default(true)
+  observations String?   @db.Text
+  createdAt    DateTime  @default(now())
+
+  church Church @relation(fields: [churchId], references: [id])
+}
+
+model Event {
+  id          String   @id @default(cuid())
+  churchId    String
+  title       String
+  description String?  @db.Text
+  date        DateTime
+  location    String?
+  targetGroup String?
+  imageUrl    String?
+  createdAt   DateTime @default(now())
+
+  church    Church          @relation(fields: [churchId], references: [id])
+  attendees EventAttendee[]
+}
+
+model Group {
+  id        String   @id @default(cuid())
+  churchId  String
+  name      String
+  createdAt DateTime @default(now())
+
+  church Church @relation(fields: [churchId], references: [id])
+
+  @@map("ChurchGroup")
+}
+
+model EventAttendee {
+  id        String   @id @default(cuid())
+  eventId   String
+  memberId  String?
+  name      String
+  phone     String?
+  confirmed Boolean  @default(true)
+  present   Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  event  Event   @relation(fields: [eventId], references: [id])
+  member Member? @relation(fields: [memberId], references: [id])
+}
+
+model Expense {
+  id          String          @id @default(cuid())
+  churchId    String
+  description String
+  amount      Float
+  category    ExpenseCategory
+  isRecurring Boolean         @default(false)
+  date        DateTime
+  createdAt   DateTime        @default(now())
+
+  church Church @relation(fields: [churchId], references: [id])
+}
+
+model IncomeManual {
+  id          String         @id @default(cuid())
+  churchId    String
+  description String
+  amount      Float
+  category    IncomeCategory
+  date        DateTime
+  createdAt   DateTime       @default(now())
+
+  church Church @relation(fields: [churchId], references: [id])
+}
+
+model User {
+  id        String   @id @default(cuid())
+  churchId  String?
+  name      String
+  email     String   @unique
+  password  String
+  role      UserRole @default(PASTOR)
+  createdAt DateTime @default(now())
+}
+
+enum Plan {
+  BASIC
+  PRO
+}
+
+enum MemberRole {
+  PASTOR
+  ADMIN
+  LEADER
+  MEMBER
+}
+
+enum TitheStatus {
+  PENDING
+  PAID
+  EXEMPT
+}
+
+enum VisitorStatus {
+  NEW
+  RETURNED
+  MEMBER
+  INACTIVE
+}
+
+enum UserRole {
+  MASTER
+  PASTOR
+  ADMIN
+  LEADER
+}
+
+enum ExpenseCategory {
+  INFRASTRUCTURE
+  UTILITIES
+  SALARIES
+  EVENTS
+  MISSIONS
+  MAINTENANCE
+  SUPPLIES
+  OTHER
+}
+
+enum IncomeCategory {
+  TITHE
+  OFFERING
+  DONATION
+  EVENT
+  OTHER
+}
