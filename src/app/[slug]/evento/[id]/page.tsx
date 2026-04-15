@@ -24,6 +24,7 @@ export default function EventoPublicoPage() {
   const [guestPhone, setGuestPhone] = useState('')
   const [confirmed, setConfirmed] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [pushStatus, setPushStatus] = useState<'idle' | 'subscribed' | 'denied' | 'loading'>('idle')
 
   useEffect(() => {
     Promise.all([
@@ -35,6 +36,37 @@ export default function EventoPublicoPage() {
       setStep('identify')
     })
   }, [id, slug])
+
+  async function subscribeToPush() {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return
+    setPushStatus('loading')
+    try {
+      const reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' })
+      await navigator.serviceWorker.ready
+      const existing = await reg.pushManager.getSubscription()
+      const sub = existing || await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!),
+      })
+      await fetch('/api/push/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slug, subscription: sub.toJSON() }),
+      })
+      setPushStatus('subscribed')
+    } catch {
+      setPushStatus('denied')
+    }
+  }
+
+  function urlBase64ToUint8Array(base64String: string) {
+    const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
+    const rawData = window.atob(base64)
+    const output = new Uint8Array(rawData.length)
+    for (let i = 0; i < rawData.length; i++) output[i] = rawData.charCodeAt(i)
+    return output
+  }
 
   const membersFiltrados = search.length >= 2
     ? members.filter(m => m.name.toLowerCase().includes(search.toLowerCase()))
@@ -194,15 +226,37 @@ export default function EventoPublicoPage() {
             <h2 style={{ fontSize: '18px', fontWeight: '700', color: '#1a1a2e', margin: '0 0 8px' }}>
               {confirmed ? 'Presença confirmada!' : 'Tudo bem!'}
             </h2>
-            <p style={{ fontSize: '14px', color: '#718096', margin: 0 }}>
+            <p style={{ fontSize: '14px', color: '#718096', margin: '0 0 20px' }}>
               {confirmed
                 ? `Te vemos em ${dataEvento.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })}! 🙌`
                 : 'Você pode confirmar depois se mudar de ideia.'}
             </p>
+
+            {/* Botão de push notification */}
+            {'serviceWorker' in navigator && 'PushManager' in window && pushStatus !== 'subscribed' && pushStatus !== 'denied' && (
+              <button
+                onClick={subscribeToPush}
+                disabled={pushStatus === 'loading'}
+                style={{
+                  width: '100%', background: '#7c3aed', color: 'white', border: 'none',
+                  borderRadius: '8px', padding: '12px', fontSize: '14px', fontWeight: '600',
+                  cursor: 'pointer', marginBottom: '12px', opacity: pushStatus === 'loading' ? 0.7 : 1,
+                }}
+              >
+                {pushStatus === 'loading' ? 'Ativando...' : '🔔 Receber notificações da igreja'}
+              </button>
+            )}
+            {pushStatus === 'subscribed' && (
+              <p style={{ fontSize: '13px', color: '#48bb78', marginBottom: '12px' }}>✓ Notificações ativadas!</p>
+            )}
+            {pushStatus === 'denied' && (
+              <p style={{ fontSize: '13px', color: '#a0aec0', marginBottom: '12px' }}>Permissão negada pelo navegador.</p>
+            )}
+
             {!confirmed && (
               <button
                 onClick={() => { setConfirmed(false); setStep('confirm') }}
-                style={{ marginTop: '16px', background: 'none', border: 'none', color: '#4299e1', fontSize: '14px', cursor: 'pointer' }}
+                style={{ background: 'none', border: 'none', color: '#4299e1', fontSize: '14px', cursor: 'pointer' }}
               >
                 Mudei de ideia — quero confirmar
               </button>

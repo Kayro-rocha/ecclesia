@@ -124,7 +124,7 @@ export default function EditarEscalaPage() {
           <span style={{ fontWeight: '600', color: '#1a1a2e', fontSize: '16px' }}>Editar escala</span>
           {foiEnviada && (
             <span style={{ fontSize: '12px', background: '#fffff0', color: '#744210', padding: '3px 10px', borderRadius: '20px', marginLeft: '4px' }}>
-              ⚠ Já enviada via WhatsApp
+              ⚠ Já notificado
             </span>
           )}
         </div>

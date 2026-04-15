@@ -3,6 +3,7 @@ import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
+import ReenviarPix from './ReenviarPix'
 
 interface Props {
   params: Promise<{ slug: string }>
@@ -155,9 +156,12 @@ export default async function DizimoPage({ params, searchParams }: Props) {
                     </td>
                     <td>
                       {d.status === 'PENDING' && (
-                        <button style={{ fontSize: '13px', color: 'var(--primary)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-                          Reenviar PIX
-                        </button>
+                        <ReenviarPix
+                          slug={slug}
+                          mes={mesAtual}
+                          ano={anoAtual}
+                          memberName={d.member.name}
+                        />
                       )}
                     </td>
                   </tr>

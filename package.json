@@ -11,15 +11,18 @@
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",
     "@prisma/client": "^5.22.0",
+    "@types/web-push": "^3.6.4",
     "axios": "^1.15.0",
     "bcryptjs": "^3.0.3",
+    "git-filter-repo": "^0.0.30",
     "mysql2": "^3.20.0",
     "next": "16.2.2",
     "next-auth": "^4.24.13",
     "prisma": "^5.22.0",
     "qrcode": "^1.5.4",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

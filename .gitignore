@@ -33,6 +33,26 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# secrets & credentials
+*.pem
+*.p12
+*.pfx
+*.key
+*.keystore
+*.jks
+id_rsa
+id_dsa
+id_ecdsa
+id_ed25519
+*.ppk
+secrets.json
+secrets.yaml
+secrets.yml
+credentials.json
+service-account*.json
+*-service-account.json
+google-credentials*.json
+
 # vercel
 .vercel
 
@@ -41,3 +61,6 @@ yarn-error.log*
 next-env.d.ts
 
 /src/generated/prisma
+
+
+ecosystem.config.js

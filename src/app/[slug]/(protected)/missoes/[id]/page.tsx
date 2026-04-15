@@ -40,6 +40,52 @@ export default function MissaoDetailPage() {
   const [form, setForm] = useState({ title: '', description: '', deliveryDate: '' })
   const [items, setItems] = useState<Array<{ id?: string; name: string; quantity: number; committed: number; donations: Donor[] }>>([])
   const [novoItem, setNovoItem] = useState({ name: '', quantity: '1' })
+  const [copied, setCopied] = useState(false)
+  const [notifying, setNotifying] = useState(false)
+  const [notifyResult, setNotifyResult] = useState<string | null>(null)
+
+  const missionLink = typeof window !== 'undefined'
+    ? `${window.location.protocol}//${window.location.host.replace(/^[^.]+\./, `${slug}.`).replace('localhost:3000', `${slug}.localhost:3000`)}/missao/${id}`
+    : ''
+
+  function getPublicLink() {
+    if (typeof window === 'undefined') return ''
+    const host = window.location.host
+    const proto = window.location.protocol
+    // multi-tenant: troca slug no subdomínio ou usa path
+    if (host.includes('.')) {
+      const parts = host.split('.')
+      parts[0] = slug
+      return `${proto}//${parts.join('.')}/missao/${id}`
+    }
+    return `${proto}//${host}/${slug}/missao/${id}`
+  }
+
+  function copyLink() {
+    navigator.clipboard.writeText(getPublicLink())
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  async function handleNotify() {
+    if (!mission) return
+    if (!confirm('Enviar notificação push para todos os membros sobre esta campanha?')) return
+    setNotifying(true)
+    setNotifyResult(null)
+    const res = await fetch('/api/push/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        slug,
+        title: `🤝 ${mission.title}`,
+        body: mission.description || 'Precisamos da sua ajuda! Veja os itens necessários.',
+        url: getPublicLink(),
+      }),
+    })
+    const data = await res.json()
+    setNotifyResult(data.sent === 0 ? 'Nenhum membro com notificações ativas ainda.' : `Notificação enviada para ${data.sent} membro(s)!`)
+    setNotifying(false)
+  }
 
   useEffect(() => {
     fetch(`/api/missions/${id}`)
@@ -107,13 +153,29 @@ export default function MissaoDetailPage() {
           </span>
         </div>
         {!editando && (
-          <div style={{ display: 'flex', gap: '8px' }}>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <button onClick={copyLink} style={{
+              padding: '8px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: '500',
+              border: '1.5px solid #e2e8f0', background: 'white', color: '#4a5568', cursor: 'pointer',
+            }}>
+              {copied ? '✓ Copiado!' : '🔗 Copiar link'}
+            </button>
+            <button onClick={handleNotify} disabled={notifying} style={{
+              padding: '8px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: '500',
+              border: 'none', background: '#7c3aed', color: 'white', cursor: 'pointer',
+              opacity: notifying ? 0.7 : 1,
+            }}>
+              {notifying ? 'Enviando...' : '🔔 Notificar membros'}
+            </button>
             <button onClick={() => setEditando(true)} className="btn-secondary">Editar</button>
             <button onClick={handleDelete} style={{
               padding: '8px 16px', borderRadius: '8px', fontSize: '14px', fontWeight: '500',
               border: '1.5px solid #fed7d7', background: 'white', color: '#e53e3e', cursor: 'pointer',
             }}>Apagar</button>
           </div>
+        )}
+        {notifyResult && (
+          <p style={{ fontSize: '12px', color: '#718096', margin: '4px 0 0' }}>{notifyResult}</p>
         )}
       </div>
 

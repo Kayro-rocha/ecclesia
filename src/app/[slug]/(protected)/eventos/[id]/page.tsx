@@ -24,6 +24,8 @@ export default function EventoPage() {
   const [event, setEvent] = useState<Event | null>(null)
   const [loading, setLoading] = useState(true)
   const [copied, setCopied] = useState(false)
+  const [notifying, setNotifying] = useState(false)
+  const [notifyResult, setNotifyResult] = useState<string | null>(null)
 
   const appDomain = typeof window !== 'undefined'
     ? window.location.hostname.split('.').slice(1).join('.')
@@ -60,6 +62,25 @@ export default function EventoPage() {
     navigator.clipboard.writeText(eventLink)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  async function handleNotify() {
+    if (!confirm('Enviar notificação push para todos os membros que aceitaram receber alertas?')) return
+    setNotifying(true)
+    setNotifyResult(null)
+    const res = await fetch('/api/push/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        slug,
+        title: event?.title,
+        body: `📅 ${new Date(event!.date).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })} · ${event?.location || ''}`,
+        url: eventLink,
+      }),
+    })
+    const data = await res.json()
+    setNotifyResult(data.sent === 0 ? 'Nenhum membro inscrito ainda.' : `Notificação enviada para ${data.sent} membro(s)!`)
+    setNotifying(false)
   }
 
   if (loading) return <div style={{ padding: '60px', textAlign: 'center' }}><p style={{ color: '#a0aec0' }}>Carregando...</p></div>
@@ -109,6 +130,16 @@ export default function EventoPage() {
             <button onClick={copyLink} className="btn-primary" style={{ fontSize: '13px' }}>
               {copied ? '✓ Copiado!' : 'Copiar link'}
             </button>
+            <button
+              onClick={handleNotify}
+              disabled={notifying}
+              style={{ width: '100%', background: '#7c3aed', color: 'white', border: 'none', borderRadius: '8px', padding: '10px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', opacity: notifying ? 0.7 : 1 }}
+            >
+              {notifying ? 'Enviando...' : '🔔 Notificar membros'}
+            </button>
+            {notifyResult && (
+              <p style={{ fontSize: '12px', color: '#718096', margin: 0, textAlign: 'center' }}>{notifyResult}</p>
+            )}
           </div>
 
           <div className="card">

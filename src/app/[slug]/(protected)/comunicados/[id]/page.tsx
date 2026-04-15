@@ -74,7 +74,7 @@ export default function EditarComunicadoPage() {
           </div>
 
           <div style={{ background: '#f8f9fb', borderRadius: '8px', padding: '12px' }}>
-            <p style={{ fontSize: '12px', color: '#718096', fontWeight: '500', marginBottom: '6px' }}>Pré-visualização WhatsApp</p>
+            <p style={{ fontSize: '12px', color: '#718096', fontWeight: '500', marginBottom: '6px' }}>Pré-visualização da notificação</p>
             <p style={{ fontSize: '14px', color: '#1a1a2e', whiteSpace: 'pre-wrap' }}>
               {form.body || 'Sua mensagem aparecerá aqui...'}
             </p>

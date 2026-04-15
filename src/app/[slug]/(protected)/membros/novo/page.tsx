@@ -36,8 +36,12 @@ export default function NovoMembroPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setErro('')
-    if (form.cpfCnpj && !isValidCpfCnpj(form.cpfCnpj)) {
-      setErro('CPF ou CNPJ inválido. Verifique os dígitos.')
+    if (!form.cpfCnpj) {
+      setErro('CPF é obrigatório para o membro acessar o app.')
+      return
+    }
+    if (!isValidCpfCnpj(form.cpfCnpj)) {
+      setErro('CPF inválido. Verifique os dígitos.')
       return
     }
     setLoading(true)
@@ -71,8 +75,8 @@ export default function NovoMembroPage() {
             <input name="phone" value={form.phone} onChange={handleChange} required placeholder="(27) 99999-9999" />
           </div>
           <div>
-            <label>CPF / CNPJ</label>
-            <input name="cpfCnpj" value={form.cpfCnpj} onChange={handleChange} placeholder="000.000.000-00" />
+            <label>CPF * <span style={{ fontSize: '11px', fontWeight: '400', color: '#718096' }}>(usado para acesso ao app do membro)</span></label>
+            <input name="cpfCnpj" value={form.cpfCnpj} onChange={handleChange} placeholder="000.000.000-00" required />
           </div>
           <div>
             <label>E-mail</label>

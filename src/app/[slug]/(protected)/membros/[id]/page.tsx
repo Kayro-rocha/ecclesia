@@ -121,8 +121,13 @@ export default function EditarMembroPage() {
             <input name="phone" value={form.phone} onChange={handleChange} required placeholder="(27) 99999-9999" />
           </div>
           <div>
-            <label>CPF / CNPJ</label>
+            <label>CPF <span style={{ fontSize: '11px', fontWeight: '400', color: '#718096' }}>(necessário para acesso ao app)</span></label>
             <input name="cpfCnpj" value={form.cpfCnpj} onChange={handleChange} placeholder="000.000.000-00" />
+            {!form.cpfCnpj && (
+              <p style={{ fontSize: '12px', color: '#dd6b20', margin: '4px 0 0' }}>
+                ⚠️ Sem CPF este membro não consegue acessar o app.
+              </p>
+            )}
           </div>
           <div>
             <label>E-mail</label>

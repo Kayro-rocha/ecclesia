@@ -40,7 +40,7 @@ export default async function DashboardPage({ params }: Props) {
     { label: 'Dízimo', desc: 'PIX e cobranças', href: `/${slug}/dizimo`, icon: '💰' },
     { label: 'Escalas', desc: 'Voluntários', href: `/${slug}/escalas`, icon: '📅' },
     { label: 'Visitantes', desc: 'Acompanhamento', href: `/${slug}/visitantes`, icon: '🙋' },
-    { label: 'Comunicados', desc: 'WhatsApp em massa', href: `/${slug}/comunicados`, icon: '📢' },
+    { label: 'Comunicados', desc: 'Notificação push', href: `/${slug}/comunicados`, icon: '📢' },
     { label: 'Missões', desc: 'Ações sociais', href: `/${slug}/missoes`, icon: '🤝' },
   ]
 

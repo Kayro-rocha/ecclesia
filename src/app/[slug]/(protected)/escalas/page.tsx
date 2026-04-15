@@ -89,6 +89,10 @@ export default async function EscalasPage({ params }: Props) {
                     escalaId={e.id}
                     foiEnviada={e.sentViaWhatsapp}
                     temVoluntarios={e.items.length > 0}
+                    title={e.title}
+                    date={e.date.toISOString()}
+                    department={e.department}
+                    membros={e.items.map(i => i.member.name)}
                   />
                 </div>
               )

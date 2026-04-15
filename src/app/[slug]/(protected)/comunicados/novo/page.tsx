@@ -1,8 +1,10 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
+
+type Group = { id: string; name: string }
 
 export default function NovoComunicadoPage() {
   const router = useRouter()
@@ -13,7 +15,14 @@ export default function NovoComunicadoPage() {
   const [loading, setLoading] = useState(false)
   const [enviando, setEnviando] = useState(false)
   const [uploading, setUploading] = useState(false)
-  const [form, setForm] = useState({ title: '', body: '', imageUrl: '' })
+  const [groups, setGroups] = useState<Group[]>([])
+  const [form, setForm] = useState({ title: '', body: '', imageUrl: '', targetGroup: '' })
+
+  useEffect(() => {
+    fetch(`/api/groups?slug=${slug}`)
+      .then(r => r.json())
+      .then(data => setGroups(Array.isArray(data) ? data : []))
+  }, [slug])
 
   async function handleImage(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -30,7 +39,8 @@ export default function NovoComunicadoPage() {
 
   async function salvar(enviar: boolean) {
     if (enviar) {
-      const confirmado = confirm('⚠️ Após o envio, não será possível editar este comunicado.\n\nDeseja enviar agora?')
+      const alvo = form.targetGroup ? `o grupo "${form.targetGroup}"` : 'todos os membros'
+      const confirmado = confirm(`⚠️ Enviar notificação para ${alvo}?\n\nApós o envio não será possível editar.`)
       if (!confirmado) return
       setEnviando(true)
     } else setLoading(true)
@@ -71,6 +81,26 @@ export default function NovoComunicadoPage() {
               rows={6} placeholder="Digite a mensagem que será enviada para os membros..."
               style={{ resize: 'vertical' }} />
             <p style={{ fontSize: '12px', color: '#a0aec0', marginTop: '4px' }}>{form.body.length} caracteres</p>
+          </div>
+
+          {/* Destinatários */}
+          <div>
+            <label>Destinatários</label>
+            <select
+              value={form.targetGroup}
+              onChange={e => setForm(p => ({ ...p, targetGroup: e.target.value }))}
+              style={{ width: '100%', border: '1.5px solid #e2e8f0', borderRadius: '8px', padding: '10px 12px', fontSize: '14px', color: '#1a1a2e', background: 'white', outline: 'none' }}
+            >
+              <option value="">Todos os membros</option>
+              {groups.map(g => (
+                <option key={g.id} value={g.name}>{g.name}</option>
+              ))}
+            </select>
+            <p style={{ fontSize: '12px', color: '#a0aec0', marginTop: '4px' }}>
+              {form.targetGroup
+                ? `Somente membros do grupo "${form.targetGroup}" receberão esta notificação`
+                : 'Todos os membros ativos receberão esta notificação'}
+            </p>
           </div>
 
           {/* Upload imagem */}
@@ -137,6 +167,14 @@ export default function NovoComunicadoPage() {
                 {form.body || 'Sua mensagem aparecerá aqui...'}
               </p>
             </div>
+          </div>
+
+          {/* Badge destinatários */}
+          <div style={{ background: form.targetGroup ? '#faf5ff' : '#f0fff4', border: `1px solid ${form.targetGroup ? '#e9d8fd' : '#c6f6d5'}`, borderRadius: '8px', padding: '10px 12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '14px' }}>{form.targetGroup ? '👥' : '📢'}</span>
+            <span style={{ fontSize: '12px', color: form.targetGroup ? '#6b46c1' : '#276749', fontWeight: '500' }}>
+              {form.targetGroup ? `Somente: ${form.targetGroup}` : 'Para todos os membros'}
+            </span>
           </div>
 
           <p style={{ fontSize: '11px', color: '#a0aec0', textAlign: 'center' }}>

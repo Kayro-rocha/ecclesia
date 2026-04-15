@@ -24,18 +24,19 @@ model Church {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
-  members       Member[]
-  tithes        Tithe[]
-  offerings     Offering[]
-  schedules     Schedule[]
-  announcements Announcement[]
-  visitors      Visitor[]
-  missions      Mission[]
-  beneficiaries Beneficiary[]
-  events        Event[]
-  groups        Group[]
-  expenses      Expense[]
-  incomesManual IncomeManual[]
+  members           Member[]
+  tithes            Tithe[]
+  offerings         Offering[]
+  schedules         Schedule[]
+  announcements     Announcement[]
+  visitors          Visitor[]
+  missions          Mission[]
+  beneficiaries     Beneficiary[]
+  events            Event[]
+  groups            Group[]
+  expenses          Expense[]
+  incomesManual     IncomeManual[]
+  pushSubscriptions PushSubscription[]
 }
 
 model Member {
@@ -50,14 +51,16 @@ model Member {
   active         Boolean    @default(true)
   isTither       Boolean    @default(true)
   suggestedTithe Float?
+  memberPassword String?
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
 
-  church        Church         @relation(fields: [churchId], references: [id])
-  tithes        Tithe[]
-  scheduleItems ScheduleItem[]
-  attendances   Attendance[]
-  eventAttendees EventAttendee[]
+  church            Church             @relation(fields: [churchId], references: [id])
+  tithes            Tithe[]
+  scheduleItems     ScheduleItem[]
+  attendances       Attendance[]
+  eventAttendees    EventAttendee[]
+  pushSubscriptions PushSubscription[]
 }
 
 model Tithe {
@@ -102,11 +105,12 @@ model Schedule {
 }
 
 model ScheduleItem {
-  id         String  @id @default(cuid())
+  id         String             @id @default(cuid())
   scheduleId String
   memberId   String
   role       String
-  confirmed  Boolean @default(false)
+  confirmed  Boolean            @default(false)
+  status     ScheduleItemStatus @default(PENDING)
 
   schedule Schedule @relation(fields: [scheduleId], references: [id])
   member   Member   @relation(fields: [memberId], references: [id])
@@ -128,6 +132,7 @@ model Announcement {
   title          String
   body           String    @db.Text
   imageUrl       String?
+  targetGroup    String?
   sentAt         DateTime?
   recipientCount Int       @default(0)
   createdAt      DateTime  @default(now())
@@ -191,6 +196,7 @@ model MissionDonor {
   missionItemId String
   donorName     String
   donorPhone    String
+  quantity      Int      @default(1)
   createdAt     DateTime @default(now())
 
   item MissionItem @relation(fields: [missionItemId], references: [id])
@@ -277,6 +283,19 @@ model IncomeManual {
   church Church @relation(fields: [churchId], references: [id])
 }
 
+model PushSubscription {
+  id        String   @id @default(cuid())
+  churchId  String
+  memberId  String?
+  endpoint  String   @db.Text
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  church Church  @relation(fields: [churchId], references: [id])
+  member Member? @relation(fields: [memberId], references: [id])
+}
+
 model User {
   id        String   @id @default(cuid())
   churchId  String?
@@ -336,4 +355,10 @@ enum IncomeCategory {
   DONATION
   EVENT
   OTHER
+}
+
+enum ScheduleItemStatus {
+  PENDING
+  CONFIRMED
+  DECLINED
 }

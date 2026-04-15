@@ -59,6 +59,18 @@ export async function PUT(req: NextRequest, { params }: Params) {
   return NextResponse.json(schedule)
 }
 
+export async function PATCH(_req: NextRequest, { params }: Params) {
+  const session = await getServerSession(authOptions)
+  if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+
+  const { id } = await params
+  await prisma.schedule.update({
+    where: { id },
+    data: { sentViaWhatsapp: true },
+  })
+  return NextResponse.json({ ok: true })
+}
+
 export async function DELETE(_req: NextRequest, { params }: Params) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
