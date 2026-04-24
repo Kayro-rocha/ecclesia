@@ -4,6 +4,9 @@ import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
 
+export const metadata = { title: 'Frequência' }
+
+
 interface Props { params: Promise<{ slug: string }> }
 
 export default async function FrequenciaPage({ params }: Props) {

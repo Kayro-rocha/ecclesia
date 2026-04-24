@@ -3,7 +3,10 @@ import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
-import ComunicadoActions from './ComunicadoActions'
+import ComunicadosListGestor from './ComunicadosListGestor'
+
+export const metadata = { title: 'Comunicados' }
+
 
 interface Props {
   params: Promise<{ slug: string }>
@@ -17,7 +20,7 @@ export default async function ComunicadosPage({ params, searchParams }: Props) {
   const session = await getServerSession(authOptions)
   if (!session) redirect(`/${slug}/login`)
 
-  const church = await prisma.church.findUnique({ where: { slug } })
+  const church = await prisma.church.findUnique({ where: { slug }, select: { id: true, name: true } })
   if (!church) redirect('/')
 
   const comunicados = await prisma.announcement.findMany({
@@ -57,47 +60,7 @@ export default async function ComunicadosPage({ params, searchParams }: Props) {
           <button type="submit" className="btn-primary">Filtrar</button>
         </form>
 
-        {comunicados.length === 0 ? (
-          <div className="card" style={{ textAlign: 'center', padding: '48px' }}>
-            <p style={{ color: '#a0aec0', fontSize: '14px', marginBottom: '8px' }}>Nenhum comunicado encontrado</p>
-            <Link href={`/${slug}/comunicados/novo`} style={{ color: 'var(--primary)', fontSize: '14px' }}>
-              Criar primeiro comunicado
-            </Link>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {comunicados.map((c) => (
-              <div key={c.id} className="card">
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px' }}>
-                  <div style={{ flex: 1 }}>
-                    <p style={{ fontWeight: '600', color: '#1a1a2e', fontSize: '15px' }}>{c.title}</p>
-                    <p style={{ fontSize: '13px', color: '#718096', marginTop: '4px',
-                      overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2,
-                      WebkitBoxOrient: 'vertical' as const }}>
-                      {c.body}
-                    </p>
-                  </div>
-                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                    {c.sentAt ? (
-                      <span className="badge-green">Enviado</span>
-                    ) : (
-                      <span className="badge-yellow">Rascunho</span>
-                    )}
-                    <p style={{ fontSize: '11px', color: '#cbd5e0', marginTop: '4px' }}>
-                      {new Date(c.createdAt).toLocaleDateString('pt-BR')}
-                    </p>
-                  </div>
-                </div>
-                {c.sentAt && (
-                  <p style={{ fontSize: '12px', color: '#a0aec0', marginTop: '8px' }}>
-                    Enviado para {c.recipientCount} membros · {new Date(c.sentAt).toLocaleDateString('pt-BR')}
-                  </p>
-                )}
-                <ComunicadoActions slug={slug} comunicadoId={c.id} foiEnviado={!!c.sentAt} />
-              </div>
-            ))}
-          </div>
-        )}
+        <ComunicadosListGestor comunicados={comunicados} slug={slug} churchName={church.name} />
       </div>
     </div>
   )

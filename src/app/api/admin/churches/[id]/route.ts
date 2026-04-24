@@ -42,7 +42,21 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   }
 
   const { id } = await params
-  const { plan, active, name } = await req.json()
+  const body = await req.json()
+  const { plan, active, name, encerrar } = body
+
+  // Encerramento definitivo: renomeia o slug para liberar
+  if (encerrar) {
+    const church = await prisma.church.findUnique({ where: { id }, select: { slug: true } })
+    if (!church) return NextResponse.json({ error: 'Não encontrada' }, { status: 404 })
+
+    // Não renomeia se já está encerrada
+    if (!church.slug.startsWith('_cancelado-')) {
+      const cancelledSlug = `_cancelado-${Date.now()}-${church.slug}`
+      await prisma.church.update({ where: { id }, data: { active: false, slug: cancelledSlug } })
+    }
+    return NextResponse.json({ ok: true })
+  }
 
   const data: Record<string, unknown> = {}
   if (plan !== undefined) data.plan = plan

@@ -5,6 +5,9 @@ import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
 import EscalaActions from './EscalaActions'
 
+export const metadata = { title: 'Escalas' }
+
+
 interface Props {
   params: Promise<{ slug: string }>
 }

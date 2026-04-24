@@ -20,8 +20,13 @@ self.addEventListener('notificationclick', function (event) {
   const url = event.notification.data?.url || '/'
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (list) {
+      // Procura janela já aberta do app (qualquer página) e navega para a URL correta
       for (const client of list) {
-        if (client.url === url && 'focus' in client) return client.focus()
+        if ('focus' in client && 'navigate' in client) {
+          return client.focus().then(function () {
+            return client.navigate(url)
+          })
+        }
       }
       if (clients.openWindow) return clients.openWindow(url)
     })

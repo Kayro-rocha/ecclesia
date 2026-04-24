@@ -24,43 +24,24 @@ export async function GET(req: NextRequest) {
   const startDate = new Date(y, m - 1, 1)
   const endDate = new Date(y, m, 0, 23, 59, 59)
 
-  // Receitas automáticas: dízimos pagos
-  const tithes = await prisma.tithe.findMany({
-    where: { churchId: church.id, status: 'PAID', paidAt: { gte: startDate, lte: endDate } },
-  })
+  const [incomesManual, expenses] = await Promise.all([
+    prisma.incomeManual.findMany({
+      where: { churchId: church.id, date: { gte: startDate, lte: endDate } },
+    }),
+    prisma.expense.findMany({
+      where: { churchId: church.id, date: { gte: startDate, lte: endDate } },
+    }),
+  ])
 
-  // Receitas automáticas: ofertas via PIX
-  const offerings = await prisma.offering.findMany({
-    where: { churchId: church.id, createdAt: { gte: startDate, lte: endDate } },
-  })
-
-  // Receitas manuais (coleta, doações em espécie)
-  const incomesManual = await prisma.incomeManual.findMany({
-    where: { churchId: church.id, date: { gte: startDate, lte: endDate } },
-  })
-
-  // Despesas
-  const expenses = await prisma.expense.findMany({
-    where: { churchId: church.id, date: { gte: startDate, lte: endDate } },
-  })
-
-  const totalTithes = tithes.reduce((s, t) => s + t.amount, 0)
-  const totalOfferings = offerings.reduce((s, o) => s + o.amount, 0)
-  const totalIncomesManual = incomesManual.reduce((s, i) => s + i.amount, 0)
-  const totalReceitas = totalTithes + totalOfferings + totalIncomesManual
+  const totalReceitas = incomesManual.reduce((s, i) => s + i.amount, 0)
   const totalDespesas = expenses.reduce((s, e) => s + e.amount, 0)
 
-  // Despesas por categoria
   const expensesByCategory: Record<string, number> = {}
   for (const e of expenses) {
     expensesByCategory[e.category] = (expensesByCategory[e.category] || 0) + e.amount
   }
 
-  // Receitas por categoria
-  const incomesByCategory: Record<string, number> = {
-    TITHE: totalTithes,
-    OFFERING: totalOfferings,
-  }
+  const incomesByCategory: Record<string, number> = {}
   for (const i of incomesManual) {
     incomesByCategory[i.category] = (incomesByCategory[i.category] || 0) + i.amount
   }
@@ -74,9 +55,7 @@ export async function GET(req: NextRequest) {
     const hStart = new Date(hy, hm - 1, 1)
     const hEnd = new Date(hy, hm, 0, 23, 59, 59)
 
-    const [hTithes, hOfferings, hIncomes, hExpenses] = await Promise.all([
-      prisma.tithe.aggregate({ where: { churchId: church.id, status: 'PAID', paidAt: { gte: hStart, lte: hEnd } }, _sum: { amount: true } }),
-      prisma.offering.aggregate({ where: { churchId: church.id, createdAt: { gte: hStart, lte: hEnd } }, _sum: { amount: true } }),
+    const [hIncomes, hExpenses] = await Promise.all([
       prisma.incomeManual.aggregate({ where: { churchId: church.id, date: { gte: hStart, lte: hEnd } }, _sum: { amount: true } }),
       prisma.expense.aggregate({ where: { churchId: church.id, date: { gte: hStart, lte: hEnd } }, _sum: { amount: true } }),
     ])
@@ -84,7 +63,7 @@ export async function GET(req: NextRequest) {
     history.push({
       month: hm,
       year: hy,
-      receitas: (hTithes._sum.amount || 0) + (hOfferings._sum.amount || 0) + (hIncomes._sum.amount || 0),
+      receitas: hIncomes._sum.amount || 0,
       despesas: hExpenses._sum.amount || 0,
     })
   }
@@ -95,7 +74,6 @@ export async function GET(req: NextRequest) {
     totalReceitas,
     totalDespesas,
     resultado: totalReceitas - totalDespesas,
-    breakdown: { totalTithes, totalOfferings, totalIncomesManual },
     expensesByCategory,
     incomesByCategory,
     history,

@@ -2,10 +2,8 @@
 
 import { useState } from 'react'
 import { signIn } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
 
 export default function AdminLoginPage() {
-  const router = useRouter()
   const [form, setForm] = useState({ email: '', password: '' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -22,7 +20,7 @@ export default function AdminLoginPage() {
     })
 
     if (res?.ok) {
-      router.push('/admin/dashboard')
+      window.location.href = '/admin/dashboard'
     } else {
       setError('Email ou senha inválidos')
       setLoading(false)

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { createAsaasSubaccount, registerAsaasWebhook } from '@/lib/asaas'
+import { sendWelcomeEmail } from '@/lib/email'
 import bcrypt from 'bcryptjs'
 
 export async function POST(req: NextRequest) {
@@ -12,7 +12,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Campos obrigatórios faltando' }, { status: 400 })
     }
 
-    // Verifica se o slug já existe
+    // Verifica slugs reservados e unicidade
+    if (RESERVED_SLUGS.has(slug)) {
+      return NextResponse.json({ error: 'Este subdomínio é reservado. Escolha outro.' }, { status: 409 })
+    }
     const existing = await prisma.church.findUnique({ where: { slug } })
     if (existing) {
       return NextResponse.json({ error: 'Este subdomínio já está em uso' }, { status: 409 })
@@ -31,39 +34,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Este CPF/CNPJ já está cadastrado.' }, { status: 409 })
     }
 
-    // Cria subconta no Asaas (dinheiro dos dízimos cai na conta da igreja)
-    let asaasAccountId: string | null = null
-    let asaasApiKey: string | null = null
-
-    try {
-      const subconta = await createAsaasSubaccount({
-        name: churchName,
-        email,
-        cpfCnpj,
-        mobilePhone: phone,
-        postalCode,
-        birthDate,
-        incomeValue: incomeValue ? parseFloat(incomeValue) : 0,
-      })
-      asaasAccountId = subconta.id
-      asaasApiKey = subconta.apiKey
-
-      // Registra webhook na subconta para receber eventos de pagamento
-      const webhookUrl = `https://${process.env.NEXT_PUBLIC_APP_DOMAIN}/api/webhooks/asaas`
-      await registerAsaasWebhook(subconta.apiKey, webhookUrl, process.env.ASAAS_WEBHOOK_TOKEN || undefined)
-    } catch (err) {
-      // Em sandbox pode falhar por CPF inválido — não bloqueia o cadastro
-      console.error('Erro ao criar subconta Asaas:', err)
-    }
-
     // Cria a igreja no banco
     const church = await prisma.church.create({
       data: {
         name: churchName,
         slug,
         cpfCnpj: cpfClean,
-        asaasAccountId,
-        asaasApiKey,
       },
     })
 
@@ -79,6 +55,19 @@ export async function POST(req: NextRequest) {
       },
     })
 
+    // Marca token como usado
+    if (body.token) {
+      await prisma.onboardingToken.updateMany({
+        where: { token: body.token, usedAt: null },
+        data: { usedAt: new Date() },
+      })
+    }
+
+    // Email de boas-vindas (não bloqueia resposta se falhar)
+    sendWelcomeEmail(email, churchName, slug).catch(err =>
+      console.error('[onboarding] Erro ao enviar email de boas-vindas:', err)
+    )
+
     return NextResponse.json({ slug: church.slug }, { status: 201 })
   } catch (err) {
     console.error('Erro no onboarding:', err)
@@ -86,10 +75,22 @@ export async function POST(req: NextRequest) {
   }
 }
 
+const RESERVED_SLUGS = new Set([
+  'membro', 'login', 'logout', 'cadastro', 'api', 'admin', 'app',
+  'www', 'static', 'public', 'dashboard', 'webhook', 'webhooks',
+  'auth', 'oauth', 'signup', 'register', 'onboarding', 'billing',
+  'support', 'suporte', 'ajuda', 'help', 'status', 'health',
+  'ecclesia', 'sistema', 'painel',
+])
+
 // Verifica disponibilidade do slug em tempo real
 export async function GET(req: NextRequest) {
   const slug = req.nextUrl.searchParams.get('slug')
-  if (!slug) return NextResponse.json({ available: false })
+  if (!slug || slug.length < 3) return NextResponse.json({ available: false })
+
+  if (RESERVED_SLUGS.has(slug)) {
+    return NextResponse.json({ available: false, reserved: true })
+  }
 
   const existing = await prisma.church.findUnique({ where: { slug } })
   return NextResponse.json({ available: !existing })

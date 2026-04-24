@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { deleteUpload } from '@/lib/delete-upload'
 
 interface Params {
   params: Promise<{ id: string }>
@@ -46,5 +47,6 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
   if (!existing) return NextResponse.json({ error: 'Não encontrado' }, { status: 404 })
 
   await prisma.announcement.delete({ where: { id } })
+  await deleteUpload(existing.imageUrl ?? null)
   return NextResponse.json({ ok: true })
 }

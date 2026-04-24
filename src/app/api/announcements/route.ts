@@ -47,10 +47,10 @@ export async function POST(req: NextRequest) {
     })
 
     const payload = JSON.stringify({
-      title,
-      body: texto.length > 100 ? texto.slice(0, 97) + '...' : texto,
+      title: `📢 ${church.name}`,
+      body: `${title}: ${texto.length > 80 ? texto.slice(0, 77) + '...' : texto}`,
       icon: '/icon-192.png',
-      url: `/${slug}/comunicados`,
+      url: `/${slug}/membro/comunicados?id=${announcement.id}`,
     })
 
     const toDelete: string[] = []

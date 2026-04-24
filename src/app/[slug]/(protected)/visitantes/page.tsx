@@ -3,6 +3,7 @@ import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
+import VisitantesTabela from './VisitantesTabela'
 
 interface Props {
   params: Promise<{ slug: string }>
@@ -27,20 +28,6 @@ export default async function VisitantesPage({ params, searchParams }: Props) {
     },
     orderBy: { createdAt: 'desc' },
   })
-
-  const statusLabel: Record<string, string> = {
-    NEW: 'Novo',
-    RETURNED: 'Retornou',
-    MEMBER: 'Virou membro',
-    INACTIVE: 'Inativo',
-  }
-
-  const statusColor: Record<string, string> = {
-    NEW: 'bg-blue-50 text-blue-600',
-    RETURNED: 'bg-green-50 text-green-600',
-    MEMBER: 'bg-purple-50 text-purple-600',
-    INACTIVE: 'bg-gray-100 text-gray-400',
-  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -71,76 +58,15 @@ export default async function VisitantesPage({ params, searchParams }: Props) {
             <option value="MEMBER">Viraram membros</option>
             <option value="INACTIVE">Inativos</option>
           </select>
-          <button type="submit"
-            className="bg-gray-900 text-white text-sm px-4 py-2 rounded-lg">
+          <button type="submit" className="bg-gray-900 text-white text-sm px-4 py-2 rounded-lg">
             Filtrar
           </button>
         </form>
 
-        <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-          <div className="px-4 py-3 border-b border-gray-100">
-            <span className="text-sm text-gray-500">{visitantes.length} visitantes</span>
-          </div>
-
-          {visitantes.length === 0 ? (
-            <div className="p-12 text-center">
-              <p className="text-gray-400 text-sm mb-2">Nenhum visitante registrado</p>
-              <Link href={`/${slug}/visitantes/novo`} className="text-blue-600 text-sm hover:underline">
-                Registrar primeiro visitante
-              </Link>
-            </div>
-          ) : (
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-100">
-                  <th className="text-left text-xs text-gray-400 font-medium px-4 py-3">Nome</th>
-                  <th className="text-left text-xs text-gray-400 font-medium px-4 py-3">Telefone</th>
-                  <th className="text-left text-xs text-gray-400 font-medium px-4 py-3">Visitas</th>
-                  <th className="text-left text-xs text-gray-400 font-medium px-4 py-3">Última visita</th>
-                  <th className="text-left text-xs text-gray-400 font-medium px-4 py-3">Convidado por</th>
-                  <th className="text-left text-xs text-gray-400 font-medium px-4 py-3">Status</th>
-                  <th className="text-left text-xs text-gray-400 font-medium px-4 py-3"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {visitantes.map((v) => (
-                  <tr key={v.id} className="border-b border-gray-50 hover:bg-gray-50">
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-xs font-semibold">
-                          {v.name.charAt(0)}
-                        </div>
-                        <span className="text-sm text-gray-900">{v.name}</span>
-                        {v.wantsHomeVisit && (
-                          <span className="text-xs bg-yellow-50 text-yellow-600 px-1.5 py-0.5 rounded">
-                            Quer visita
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-500">{v.phone}</td>
-                    <td className="px-4 py-3 text-sm text-gray-700 font-medium">{v.visits}x</td>
-                    <td className="px-4 py-3 text-sm text-gray-400">
-                      {new Date(v.lastVisit).toLocaleDateString('pt-BR')}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-400">{v.invitedBy || '—'}</td>
-                    <td className="px-4 py-3">
-                      <span className={`text-xs px-2 py-1 rounded-full ${statusColor[v.status]}`}>
-                        {statusLabel[v.status]}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <Link href={`/${slug}/visitantes/${v.id}`}
-                        className="text-xs text-blue-600 hover:underline">
-                        Ver
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
+        <VisitantesTabela
+          visitors={visitantes.map(v => ({ ...v, lastVisit: v.lastVisit.toISOString(), createdAt: v.createdAt.toISOString() }))}
+          slug={slug}
+        />
       </div>
     </div>
   )

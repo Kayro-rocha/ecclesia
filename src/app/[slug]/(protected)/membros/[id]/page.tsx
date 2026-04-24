@@ -13,6 +13,12 @@ export default function EditarMembroPage() {
   const slug = params?.slug as string
   const id = params?.id as string
 
+  async function handleResetSenha() {
+    if (!confirm(`Resetar a senha de ${form.name || 'este membro'}?\n\nNa próxima vez que acessar o app, ele precisará criar uma nova senha.`)) return
+    await fetch(`/api/members/${id}/reset-password`, { method: 'POST' })
+    alert('Senha resetada. O membro poderá criar uma nova senha no próximo acesso.')
+  }
+
   async function handleDelete() {
     if (!confirm(`Apagar ${form.name || 'este membro'}?\n\nIsso removerá também o histórico de dízimos e escalas. Esta ação não pode ser desfeita.`)) return
     const res = await fetch(`/api/members/${id}`, { method: 'DELETE' })
@@ -33,6 +39,7 @@ export default function EditarMembroPage() {
     role: 'MEMBER',
     isTither: true,
     suggestedTithe: '',
+    birthDate: '',
     active: true,
   })
 
@@ -56,6 +63,7 @@ export default function EditarMembroPage() {
           role: data.role || 'MEMBER',
           isTither: data.isTither ?? true,
           suggestedTithe: data.suggestedTithe || '',
+          birthDate: data.birthDate ? new Date(data.birthDate).toISOString().split('T')[0] : '',
           active: data.active ?? true,
         })
         setLoading(false)
@@ -166,6 +174,10 @@ export default function EditarMembroPage() {
                 onChange={handleChange} placeholder="0,00" />
             </div>
           )}
+          <div>
+            <label>Data de aniversário</label>
+            <input name="birthDate" type="date" value={form.birthDate} onChange={handleChange} />
+          </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <input type="checkbox" name="active" id="active"
               checked={form.active} onChange={handleChange}
@@ -184,13 +196,13 @@ export default function EditarMembroPage() {
             </button>
           </div>
 
-          <div style={{ borderTop: '1px solid #edf2f7', paddingTop: '16px', marginTop: '4px' }}>
+          <div style={{ borderTop: '1px solid #edf2f7', paddingTop: '16px', marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <button type="button" onClick={handleResetSenha}
+              style={{ width: '100%', padding: '10px', borderRadius: '8px', fontSize: '14px', border: '1.5px solid #bee3f8', background: 'white', color: '#2b6cb0', cursor: 'pointer', fontWeight: '500' }}>
+              Resetar senha do app
+            </button>
             <button type="button" onClick={handleDelete}
-              style={{
-                width: '100%', padding: '10px', borderRadius: '8px', fontSize: '14px',
-                border: '1.5px solid #fed7d7', background: 'white', color: '#e53e3e',
-                cursor: 'pointer', fontWeight: '500',
-              }}>
+              style={{ width: '100%', padding: '10px', borderRadius: '8px', fontSize: '14px', border: '1.5px solid #fed7d7', background: 'white', color: '#e53e3e', cursor: 'pointer', fontWeight: '500' }}>
               Apagar membro
             </button>
           </div>

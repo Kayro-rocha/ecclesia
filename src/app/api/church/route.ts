@@ -14,7 +14,8 @@ export async function GET(req: NextRequest) {
     where: { slug },
     select: {
       id: true, name: true, slug: true,
-      primaryColor: true, pixKey: true, whatsappInstance: true,
+      primaryColor: true, secondaryColor: true, logoUrl: true,
+      pixKey: true, whatsappInstance: true, phone: true,
     },
   })
 
@@ -26,15 +27,18 @@ export async function PUT(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
 
-  const { slug, name, primaryColor, pixKey, whatsappInstance } = await req.json()
+  const { slug, name, primaryColor, secondaryColor, logoUrl, pixKey, whatsappInstance, phone } = await req.json()
 
   const church = await prisma.church.update({
     where: { slug },
     data: {
       name: name || undefined,
       primaryColor: primaryColor || undefined,
+      secondaryColor: secondaryColor || undefined,
+      logoUrl: logoUrl !== undefined ? (logoUrl || null) : undefined,
       pixKey: pixKey || null,
       whatsappInstance: whatsappInstance || null,
+      phone: phone || null,
     },
   })
 

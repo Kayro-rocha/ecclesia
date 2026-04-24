@@ -64,11 +64,22 @@ export default function AdminIgrejaDetailPage() {
     load()
   }
 
+  async function handleEncerrar() {
+    if (!church) return
+    if (!confirm(`ATENÇÃO: Encerrar definitivamente "${church.name}"?\n\nO slug "${church.slug}" será liberado para outros clientes. Esta ação não pode ser desfeita.`)) return
+    await fetch(`/api/admin/churches/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ encerrar: true }),
+    })
+    load()
+  }
+
   if (loading) return <div style={{ padding: '60px', textAlign: 'center', color: '#64748b' }}>Carregando...</div>
   if (!church) return null
 
   const totalRevenue = church.tithes.reduce((s, t) => s + t.amount, 0)
-  const monthlyValue = church.plan === 'PRO' ? 197 : 97
+  const monthlyValue = church.plan === 'REDE' ? '199,90' : '79,90'
 
   return (
     <div style={{ padding: '32px' }}>
@@ -80,7 +91,7 @@ export default function AdminIgrejaDetailPage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <h1 style={{ fontSize: '22px', fontWeight: '700', color: 'white', margin: 0 }}>{church.name}</h1>
               <span className={`admin-badge ${church.active ? 'badge-active' : 'badge-inactive'}`}>{church.active ? 'Ativa' : 'Inativa'}</span>
-              <span className={`admin-badge ${church.plan === 'PRO' ? 'badge-pro' : 'badge-basic'}`}>{church.plan}</span>
+              <span className={`admin-badge ${church.plan === 'REDE' ? 'badge-rede' : 'badge-igreja'}`}>{church.plan}</span>
             </div>
             <p style={{ fontSize: '13px', color: '#475569', margin: '4px 0 0', fontFamily: 'monospace' }}>{church.slug}.marketcontroll.com</p>
           </div>
@@ -91,6 +102,11 @@ export default function AdminIgrejaDetailPage() {
             <button onClick={toggleActive} className={`admin-btn ${church.active ? 'admin-btn-danger' : 'admin-btn-ghost'}`}>
               {church.active ? 'Suspender' : 'Reativar'}
             </button>
+            {!church.slug.startsWith('_cancelado-') && (
+              <button onClick={handleEncerrar} className="admin-btn" style={{ background: 'transparent', border: '1px solid #7f1d1d', color: '#fca5a5', fontSize: '12px' }}>
+                Encerrar conta
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -107,8 +123,8 @@ export default function AdminIgrejaDetailPage() {
             <div>
               <label style={{ fontSize: '12px', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>Plano</label>
               <select className="admin-input" value={editPlan} onChange={e => setEditPlan(e.target.value)}>
-                <option value="BASIC">BASIC — R$ 97/mês</option>
-                <option value="PRO">PRO — R$ 197/mês</option>
+                <option value="IGREJA">Igreja — R$ 79,90/mês</option>
+                <option value="REDE">Rede — R$ 199,90/mês</option>
               </select>
             </div>
             <button onClick={handleSave} disabled={saving} className="admin-btn admin-btn-primary" style={{ opacity: saving ? 0.7 : 1 }}>
@@ -140,7 +156,7 @@ export default function AdminIgrejaDetailPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {[
               { label: 'Slug', value: church.slug, mono: true },
-              { label: 'Plano', value: `${church.plan} — R$ ${monthlyValue}/mês` },
+              { label: 'Plano', value: `${church.plan} — R$ ${monthlyValue}/mês` as string },
               { label: 'Cadastro', value: new Date(church.createdAt).toLocaleDateString('pt-BR') },
               { label: 'PIX', value: church.pixKey || 'Não configurado' },
               { label: 'WhatsApp', value: church.whatsappInstance || 'Não configurado' },

@@ -41,7 +41,20 @@ export default function EventoPage() {
     setLoading(false)
   }
 
-  useEffect(() => { load() }, [id])
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
+
+  async function loadSilent() {
+    const res = await fetch(`/api/events/${id}`)
+    const data = await res.json()
+    setEvent(data)
+    setLastUpdate(new Date())
+  }
+
+  useEffect(() => {
+    load()
+    const interval = setInterval(loadSilent, 30000)
+    return () => clearInterval(interval)
+  }, [id])
 
   async function togglePresent(attendeeId: string, present: boolean) {
     await fetch(`/api/events/${id}/attend`, {
@@ -87,9 +100,10 @@ export default function EventoPage() {
   if (!event) return null
 
   const confirmados = event.attendees.filter(a => a.confirmed)
-  const presentes = event.attendees.filter(a => a.present)
+  const naoVao     = event.attendees.filter(a => !a.confirmed)
+  const presentes  = event.attendees.filter(a => a.present)
   const dataEvento = new Date(event.date)
-  const passado = dataEvento < new Date()
+  const passado    = dataEvento < new Date()
 
   return (
     <div>
@@ -99,9 +113,15 @@ export default function EventoPage() {
           <span style={{ color: '#e2e8f0' }}>/</span>
           <span style={{ fontWeight: '600', color: '#1a1a2e', fontSize: '16px' }}>{event.title}</span>
         </div>
-        <button onClick={handleDelete} style={{ background: 'none', border: '1.5px solid #fed7d7', color: '#e53e3e', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', cursor: 'pointer' }}>
-          Apagar evento
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#68d391' }}>
+            <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#68d391', display: 'inline-block', animation: 'pulse 2s infinite' }} />
+            {lastUpdate ? `atualizado às ${lastUpdate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}` : 'ao vivo'}
+          </div>
+          <button onClick={handleDelete} style={{ background: 'none', border: '1.5px solid #fed7d7', color: '#e53e3e', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', cursor: 'pointer' }}>
+            Apagar evento
+          </button>
+        </div>
       </div>
 
       <div className="page-content" style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: '24px', alignItems: 'start' }}>
@@ -143,10 +163,14 @@ export default function EventoPage() {
           </div>
 
           <div className="card">
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', textAlign: 'center' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', textAlign: 'center' }}>
               <div>
                 <div style={{ fontSize: '28px', fontWeight: '700', color: '#1a1a2e' }}>{confirmados.length}</div>
                 <div style={{ fontSize: '12px', color: '#718096' }}>Confirmados</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '28px', fontWeight: '700', color: '#e53e3e' }}>{naoVao.length}</div>
+                <div style={{ fontSize: '12px', color: '#718096' }}>Não vão</div>
               </div>
               <div>
                 <div style={{ fontSize: '28px', fontWeight: '700', color: '#48bb78' }}>{presentes.length}</div>
@@ -156,56 +180,88 @@ export default function EventoPage() {
           </div>
         </div>
 
-        {/* Lista de confirmados */}
-        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-          <div style={{ padding: '16px 20px', borderBottom: '1px solid #edf2f7' }}>
-            <h2 style={{ fontSize: '15px', fontWeight: '600', margin: 0 }}>
-              {passado ? 'Marcar presença real' : 'Confirmações'}
-            </h2>
-            {passado && <p style={{ fontSize: '12px', color: '#718096', margin: '4px 0 0' }}>Clique para marcar quem realmente apareceu</p>}
+        {/* Listas de confirmações */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+
+          {/* Confirmados */}
+          <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid #edf2f7' }}>
+              <h2 style={{ fontSize: '15px', fontWeight: '600', margin: 0 }}>
+                {passado ? 'Marcar presença real' : `Confirmados (${confirmados.length})`}
+              </h2>
+              {passado && <p style={{ fontSize: '12px', color: '#718096', margin: '4px 0 0' }}>Clique para marcar quem realmente apareceu</p>}
+            </div>
+
+            {confirmados.length === 0 ? (
+              <div style={{ padding: '32px', textAlign: 'center', color: '#a0aec0', fontSize: '14px' }}>
+                Nenhuma confirmação ainda. Compartilhe o link do evento.
+              </div>
+            ) : (
+              <div>
+                {confirmados.map(a => (
+                  <div
+                    key={a.id}
+                    onClick={() => passado && togglePresent(a.id, !a.present)}
+                    style={{
+                      padding: '12px 20px', display: 'flex', alignItems: 'center', gap: '12px',
+                      borderBottom: '1px solid #f7fafc',
+                      cursor: passado ? 'pointer' : 'default',
+                      background: a.present ? '#f0fff4' : 'white',
+                    }}
+                  >
+                    {passado && (
+                      <div style={{
+                        width: '20px', height: '20px', borderRadius: '5px', flexShrink: 0,
+                        background: a.present ? '#48bb78' : 'white',
+                        border: `2px solid ${a.present ? '#48bb78' : '#e2e8f0'}`,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        {a.present && (
+                          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                            <path d="M2 6l3 3 5-5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        )}
+                      </div>
+                    )}
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: '14px', fontWeight: '500', color: '#1a1a2e' }}>{a.name}</div>
+                      {a.member?.group && <div style={{ fontSize: '12px', color: '#a0aec0' }}>{a.member.group}</div>}
+                    </div>
+                    {!passado && <span className="badge-green" style={{ fontSize: '11px' }}>✓ Confirmado</span>}
+                    {passado && a.present && <span className="badge-green" style={{ fontSize: '11px' }}>Presente</span>}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
-          {confirmados.length === 0 ? (
-            <div style={{ padding: '32px', textAlign: 'center', color: '#a0aec0', fontSize: '14px' }}>
-              Nenhuma confirmação ainda. Compartilhe o link do evento.
-            </div>
-          ) : (
-            <div>
-              {confirmados.map(a => (
-                <div
-                  key={a.id}
-                  onClick={() => passado && togglePresent(a.id, !a.present)}
-                  style={{
+          {/* Não vão */}
+          {naoVao.length > 0 && (
+            <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+              <div style={{ padding: '16px 20px', borderBottom: '1px solid #fff5f5', background: '#fff5f5' }}>
+                <h2 style={{ fontSize: '15px', fontWeight: '600', margin: 0, color: '#c53030' }}>
+                  Não vão ({naoVao.length})
+                </h2>
+              </div>
+              <div>
+                {naoVao.map(a => (
+                  <div key={a.id} style={{
                     padding: '12px 20px', display: 'flex', alignItems: 'center', gap: '12px',
                     borderBottom: '1px solid #f7fafc',
-                    cursor: passado ? 'pointer' : 'default',
-                    background: a.present ? '#f0fff4' : 'white',
-                  }}
-                >
-                  {passado && (
-                    <div style={{
-                      width: '20px', height: '20px', borderRadius: '5px', flexShrink: 0,
-                      background: a.present ? '#48bb78' : 'white',
-                      border: `2px solid ${a.present ? '#48bb78' : '#e2e8f0'}`,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}>
-                      {a.present && (
-                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                          <path d="M2 6l3 3 5-5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                      )}
+                  }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: '14px', fontWeight: '500', color: '#1a1a2e' }}>{a.name}</div>
+                      {a.member?.group && <div style={{ fontSize: '12px', color: '#a0aec0' }}>{a.member.group}</div>}
                     </div>
-                  )}
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '14px', fontWeight: '500', color: '#1a1a2e' }}>{a.name}</div>
-                    {a.member?.group && <div style={{ fontSize: '12px', color: '#a0aec0' }}>{a.member.group}</div>}
+                    <span style={{ fontSize: '11px', fontWeight: '600', color: '#e53e3e', background: '#fff5f5', padding: '2px 8px', borderRadius: '20px', border: '1px solid #fed7d7' }}>
+                      ✕ Não vai
+                    </span>
                   </div>
-                  {!passado && <span className="badge-green" style={{ fontSize: '11px' }}>✓ Confirmado</span>}
-                  {passado && a.present && <span className="badge-green" style={{ fontSize: '11px' }}>Presente</span>}
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           )}
+
         </div>
       </div>
     </div>

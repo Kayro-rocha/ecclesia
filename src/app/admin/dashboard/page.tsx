@@ -13,15 +13,15 @@ export default async function AdminDashboard() {
 
   const [
     totalChurches, activeChurches, inactiveChurches,
-    basicPlan, proPlan, newChurches30d,
+    igrejaPlan, redePlan, newChurches30d,
     totalMembers, totalUsers,
     recentChurches,
   ] = await Promise.all([
     prisma.church.count(),
     prisma.church.count({ where: { active: true } }),
     prisma.church.count({ where: { active: false } }),
-    prisma.church.count({ where: { plan: 'BASIC', active: true } }),
-    prisma.church.count({ where: { plan: 'PRO', active: true } }),
+    prisma.church.count({ where: { plan: 'IGREJA', active: true } }),
+    prisma.church.count({ where: { plan: 'REDE', active: true } }),
     prisma.church.count({ where: { createdAt: { gte: thirtyDaysAgo } } }),
     prisma.member.count({ where: { active: true } }),
     prisma.user.count(),
@@ -32,12 +32,12 @@ export default async function AdminDashboard() {
     }),
   ])
 
-  const mrr = basicPlan * 97 + proPlan * 197
+  const mrr = igrejaPlan * 79.9 + redePlan * 199.9
 
   const stats = [
     { label: 'Total de igrejas', value: totalChurches, sub: `${newChurches30d} nos últimos 30 dias`, color: '#3b82f6', icon: '⛪' },
     { label: 'Ativas', value: activeChurches, sub: `${inactiveChurches} inativas`, color: '#4ade80', icon: '✅' },
-    { label: 'MRR estimado', value: `R$ ${mrr.toLocaleString('pt-BR')}`, sub: `${basicPlan} Basic · ${proPlan} Pro`, color: '#f59e0b', icon: '💰' },
+    { label: 'MRR estimado', value: `R$ ${mrr.toLocaleString('pt-BR')}`, sub: `${igrejaPlan} Igreja · ${redePlan} Rede`, color: '#f59e0b', icon: '💰' },
     { label: 'Total de membros', value: totalMembers.toLocaleString('pt-BR'), sub: `${totalUsers} usuários admin`, color: '#a78bfa', icon: '👥' },
   ]
 
@@ -72,8 +72,8 @@ export default async function AdminDashboard() {
           <h2 style={{ fontSize: '14px', fontWeight: '600', color: '#94a3b8', margin: '0 0 20px' }}>Distribuição de planos</h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {[
-              { label: 'BASIC', count: basicPlan, color: '#3b82f6', price: 97 },
-              { label: 'PRO', count: proPlan, color: '#a78bfa', price: 197 },
+              { label: 'IGREJA', count: igrejaPlan, color: '#3b82f6', price: 79.9 },
+              { label: 'REDE', count: redePlan, color: '#a78bfa', price: 199.9 },
             ].map(p => {
               const pct = totalChurches > 0 ? Math.round((p.count / activeChurches) * 100) : 0
               return (
@@ -135,7 +135,7 @@ export default async function AdminDashboard() {
                 </td>
                 <td style={{ color: '#64748b', fontFamily: 'monospace', fontSize: '12px' }}>{c.slug}</td>
                 <td>
-                  <span className={`admin-badge ${c.plan === 'PRO' ? 'badge-pro' : 'badge-basic'}`}>{c.plan}</span>
+                  <span className={`admin-badge ${c.plan === 'REDE' ? 'badge-rede' : 'badge-igreja'}`}>{c.plan}</span>
                 </td>
                 <td style={{ color: '#94a3b8' }}>{c._count.members}</td>
                 <td>

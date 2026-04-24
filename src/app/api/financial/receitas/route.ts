@@ -3,6 +3,14 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
+const CATEGORY_LABELS: Record<string, string> = {
+  TITHE: 'Dízimo',
+  OFFERING: 'Oferta de Coleta',
+  DONATION: 'Doação',
+  EVENT: 'Renda de Evento',
+  OTHER: 'Outros',
+}
+
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
@@ -23,45 +31,20 @@ export async function GET(req: NextRequest) {
   const startDate = new Date(y, m - 1, 1)
   const endDate = new Date(y, m, 0, 23, 59, 59)
 
-  const [tithes, offerings, manual] = await Promise.all([
-    prisma.tithe.findMany({
-      where: { churchId: church.id, status: 'PAID', paidAt: { gte: startDate, lte: endDate } },
-      include: { member: { select: { name: true } } },
-      orderBy: { paidAt: 'desc' },
-    }),
-    prisma.offering.findMany({
-      where: { churchId: church.id, createdAt: { gte: startDate, lte: endDate } },
-      orderBy: { createdAt: 'desc' },
-    }),
-    prisma.incomeManual.findMany({
-      where: { churchId: church.id, date: { gte: startDate, lte: endDate } },
-      orderBy: { date: 'desc' },
-    }),
-  ])
+  const items = await prisma.incomeManual.findMany({
+    where: { churchId: church.id, date: { gte: startDate, lte: endDate } },
+    orderBy: { date: 'desc' },
+  })
 
-  const items = [
-    ...tithes.map((t) => ({
-      id: t.id,
-      source: 'TITHE' as const,
-      description: `Dízimo — ${t.member.name}`,
-      amount: t.amount,
-      date: t.paidAt,
-    })),
-    ...offerings.map((o) => ({
-      id: o.id,
-      source: 'OFFERING' as const,
-      description: `Oferta${o.type ? ` — ${o.type}` : ''}`,
-      amount: o.amount,
-      date: o.createdAt,
-    })),
-    ...manual.map((i) => ({
+  return NextResponse.json(
+    items.map((i) => ({
       id: i.id,
-      source: 'MANUAL' as const,
       description: i.description,
+      category: i.category,
+      categoryLabel: CATEGORY_LABELS[i.category] || i.category,
       amount: i.amount,
       date: i.date,
-    })),
-  ].sort((a, b) => new Date(b.date!).getTime() - new Date(a.date!).getTime())
-
-  return NextResponse.json(items)
+      isFromTithe: !!i.titheId,
+    }))
+  )
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { hasChurchAccess } from '@/lib/access'
 
 interface Params {
   params: Promise<{ id: string }>
@@ -20,6 +21,12 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
   if (!visitor) return NextResponse.json({ error: 'Não encontrado' }, { status: 404 })
 
+  const user = session.user as any
+  const visitorChurch = await prisma.church.findUnique({ where: { id: visitor.churchId }, select: { id: true, parentChurchId: true } })
+  if (!visitorChurch || !hasChurchAccess(user, visitorChurch)) {
+    return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
+  }
+
   return NextResponse.json(visitor)
 }
 
@@ -32,6 +39,12 @@ export async function PUT(req: NextRequest, { params }: Params) {
 
   const existing = await prisma.visitor.findUnique({ where: { id } })
   if (!existing) return NextResponse.json({ error: 'Não encontrado' }, { status: 404 })
+
+  const user = session.user as any
+  const existingChurch = await prisma.church.findUnique({ where: { id: existing.churchId }, select: { id: true, parentChurchId: true } })
+  if (!existingChurch || !hasChurchAccess(user, existingChurch)) {
+    return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
+  }
 
   const { name, phone, invitedBy, howFound, wantsHomeVisit, status, registerVisit } = body
 

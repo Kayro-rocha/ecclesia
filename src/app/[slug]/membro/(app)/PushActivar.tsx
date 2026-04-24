@@ -19,6 +19,12 @@ function urlBase64ToUint8Array(base64String: string) {
 async function subscribeAndSend(slug: string, memberId: string) {
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) return
 
+  // Garante que o SW está registrado no caminho correto
+  const swReg = await navigator.serviceWorker.getRegistration('/')
+  if (!swReg) {
+    await navigator.serviceWorker.register('/api/sw', { scope: '/' })
+  }
+
   const reg = await navigator.serviceWorker.ready
 
   const existing = await reg.pushManager.getSubscription()

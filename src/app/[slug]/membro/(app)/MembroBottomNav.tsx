@@ -2,18 +2,53 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useEffect, useState } from 'react'
+import { Home, Calendar, Bell, Wallet, User, Users } from 'lucide-react'
 
-interface Props { slug: string }
+const LS_COMUNICADOS = 'lastReadComunicados'
+const LS_ESCALAS = 'lastReadEscalas'
 
-export default function MembroBottomNav({ slug }: Props) {
+interface Props {
+  slug: string
+  latestComunicadoAt: string | null
+  latestEscalaAt: string | null
+  isLeader?: boolean
+}
+
+export default function MembroBottomNav({ slug, latestComunicadoAt, latestEscalaAt, isLeader }: Props) {
   const pathname = usePathname()
+  const [hasUnreadComunicados, setHasUnreadComunicados] = useState(false)
+  const [hasUnreadEscalas, setHasUnreadEscalas] = useState(false)
+
+  useEffect(() => {
+    if (latestComunicadoAt) {
+      const last = localStorage.getItem(LS_COMUNICADOS)
+      if (!last || new Date(latestComunicadoAt) > new Date(last)) setHasUnreadComunicados(true)
+    }
+    if (latestEscalaAt) {
+      const last = localStorage.getItem(LS_ESCALAS)
+      if (!last || new Date(latestEscalaAt) > new Date(last)) setHasUnreadEscalas(true)
+    }
+  }, [latestComunicadoAt, latestEscalaAt])
+
+  useEffect(() => {
+    if (pathname.includes('/comunicados')) {
+      localStorage.setItem(LS_COMUNICADOS, new Date().toISOString())
+      setHasUnreadComunicados(false)
+    }
+    if (pathname.includes('/escalas')) {
+      localStorage.setItem(LS_ESCALAS, new Date().toISOString())
+      setHasUnreadEscalas(false)
+    }
+  }, [pathname])
 
   const items = [
-    { href: `/${slug}/membro/home`,         icon: '🏠', label: 'Início' },
-    { href: `/${slug}/membro/escalas`,      icon: '📅', label: 'Escalas' },
-    { href: `/${slug}/membro/comunicados`,  icon: '📢', label: 'Avisos' },
-    { href: `/${slug}/membro/dizimo`,       icon: '💰', label: 'Dízimo' },
-    { href: `/${slug}/membro/perfil`,       icon: '👤', label: 'Perfil' },
+    { href: `/${slug}/membro/home`,        Icon: Home,     label: 'Início' },
+    { href: `/${slug}/membro/escalas`,     Icon: Calendar, label: 'Escalas',  badge: hasUnreadEscalas },
+    ...(isLeader ? [{ href: `/${slug}/membro/celula`, Icon: Users, label: 'Célula', badge: false }] : []),
+    { href: `/${slug}/membro/comunicados`, Icon: Bell,     label: 'Avisos',   badge: hasUnreadComunicados },
+    { href: `/${slug}/membro/dizimo`,      Icon: Wallet,   label: 'Dízimo' },
+    { href: `/${slug}/membro/perfil`,      Icon: User,     label: 'Perfil' },
   ]
 
   return (
@@ -25,19 +60,29 @@ export default function MembroBottomNav({ slug }: Props) {
     }}>
       {items.map(item => {
         const active = pathname.startsWith(item.href)
+        const color = active ? 'var(--church-primary)' : '#94a3b8'
         return (
           <Link
             key={item.href}
             href={item.href}
             style={{
               flex: 1, display: 'flex', flexDirection: 'column',
-              alignItems: 'center', justifyContent: 'center', gap: '2px',
-              textDecoration: 'none', color: active ? '#3b82f6' : '#94a3b8',
+              alignItems: 'center', justifyContent: 'center', gap: '3px',
+              textDecoration: 'none', color,
               fontSize: '10px', fontWeight: active ? '600' : '400',
-              transition: 'color 0.15s',
+              transition: 'color 0.15s', position: 'relative',
             }}
           >
-            <span style={{ fontSize: '20px', lineHeight: 1 }}>{item.icon}</span>
+            <span style={{ position: 'relative', display: 'flex' }}>
+              <item.Icon size={22} strokeWidth={active ? 2.5 : 1.8} />
+              {item.badge && (
+                <span style={{
+                  position: 'absolute', top: '-2px', right: '-4px',
+                  width: '9px', height: '9px', borderRadius: '50%',
+                  background: '#ef4444', border: '1.5px solid white',
+                }} />
+              )}
+            </span>
             {item.label}
           </Link>
         )

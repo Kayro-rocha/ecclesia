@@ -18,7 +18,7 @@ export default function AdminIgrejasPage() {
   const [plan, setPlan] = useState('')
   const [status, setStatus] = useState('')
   const [showNew, setShowNew] = useState(false)
-  const [newForm, setNewForm] = useState({ name: '', slug: '', plan: 'BASIC' })
+  const [newForm, setNewForm] = useState({ name: '', slug: '', plan: 'IGREJA' })
   const [creating, setCreating] = useState(false)
 
   async function load() {
@@ -44,7 +44,7 @@ export default function AdminIgrejasPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newForm),
     })
-    if (res.ok) { setShowNew(false); setNewForm({ name: '', slug: '', plan: 'BASIC' }); load() }
+    if (res.ok) { setShowNew(false); setNewForm({ name: '', slug: '', plan: 'IGREJA' }); load() }
     else { const d = await res.json(); alert(d.error || 'Erro') }
     setCreating(false)
   }
@@ -79,8 +79,8 @@ export default function AdminIgrejasPage() {
         />
         <select className="admin-input" value={plan} onChange={e => setPlan(e.target.value)}>
           <option value="">Todos os planos</option>
-          <option value="BASIC">BASIC</option>
-          <option value="PRO">PRO</option>
+          <option value="IGREJA">Igreja</option>
+          <option value="REDE">Rede</option>
         </select>
         <select className="admin-input" value={status} onChange={e => setStatus(e.target.value)}>
           <option value="">Todos os status</option>
@@ -102,13 +102,13 @@ export default function AdminIgrejasPage() {
               <div>
                 <label style={{ fontSize: '12px', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>Slug * (subdomínio)</label>
                 <input className="admin-input" value={newForm.slug} onChange={e => setNewForm(p => ({ ...p, slug: e.target.value.toLowerCase().replace(/\s/g, '-') }))} style={{ width: '100%', boxSizing: 'border-box' }} />
-                {newForm.slug && <p style={{ fontSize: '11px', color: '#475569', margin: '4px 0 0' }}>{newForm.slug}.marketcontroll.com</p>}
+                {newForm.slug && <p style={{ fontSize: '11px', color: '#475569', margin: '4px 0 0' }}>{newForm.slug}.ecclesia.app</p>}
               </div>
               <div>
                 <label style={{ fontSize: '12px', color: '#94a3b8', display: 'block', marginBottom: '6px' }}>Plano</label>
                 <select className="admin-input" value={newForm.plan} onChange={e => setNewForm(p => ({ ...p, plan: e.target.value }))} style={{ width: '100%', boxSizing: 'border-box' }}>
-                  <option value="BASIC">BASIC — R$ 97/mês</option>
-                  <option value="PRO">PRO — R$ 197/mês</option>
+                  <option value="IGREJA">Igreja — R$ 79,90/mês</option>
+                  <option value="REDE">Rede — R$ 199,90/mês</option>
                 </select>
               </div>
             </div>
@@ -149,7 +149,7 @@ export default function AdminIgrejasPage() {
                       <p style={{ fontSize: '11px', color: '#475569', margin: '2px 0 0', fontFamily: 'monospace' }}>{c.slug}</p>
                     </div>
                   </td>
-                  <td><span className={`admin-badge ${c.plan === 'PRO' ? 'badge-pro' : 'badge-basic'}`}>{c.plan}</span></td>
+                  <td><span className={`admin-badge ${c.plan === 'REDE' ? 'badge-rede' : 'badge-igreja'}`}>{c.plan}</span></td>
                   <td style={{ color: '#94a3b8' }}>{c._count.members}</td>
                   <td>{c.pixKey ? <span style={{ color: '#4ade80', fontSize: '12px' }}>✓</span> : <span style={{ color: '#475569', fontSize: '12px' }}>—</span>}</td>
                   <td>{c.whatsappInstance ? <span style={{ color: '#4ade80', fontSize: '12px' }}>✓</span> : <span style={{ color: '#475569', fontSize: '12px' }}>—</span>}</td>
@@ -157,6 +157,7 @@ export default function AdminIgrejasPage() {
                   <td style={{ color: '#64748b', fontSize: '12px' }}>{new Date(c.createdAt).toLocaleDateString('pt-BR')}</td>
                   <td>
                     <div style={{ display: 'flex', gap: '6px' }}>
+                      <Link href={`/${c.slug}/dashboard`} target="_blank" rel="noopener noreferrer" className="admin-btn admin-btn-success" style={{ fontSize: '12px', padding: '4px 10px' }}>Gerenciar</Link>
                       <Link href={`/admin/igrejas/${c.id}`} className="admin-btn admin-btn-ghost" style={{ fontSize: '12px', padding: '4px 10px' }}>Ver</Link>
                       <button onClick={() => toggleActive(c.id, c.active)} className={`admin-btn ${c.active ? 'admin-btn-danger' : 'admin-btn-ghost'}`} style={{ fontSize: '12px', padding: '4px 10px' }}>
                         {c.active ? 'Suspender' : 'Reativar'}

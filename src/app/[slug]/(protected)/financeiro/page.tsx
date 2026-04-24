@@ -4,6 +4,9 @@ import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import FinanceiroClient from './FinanceiroClient'
 
+export const metadata = { title: 'Financeiro' }
+
+
 interface Props {
   params: Promise<{ slug: string }>
 }
@@ -17,5 +20,5 @@ export default async function FinanceiroPage({ params }: Props) {
   const church = await prisma.church.findUnique({ where: { slug } })
   if (!church) redirect('/')
 
-  return <FinanceiroClient slug={slug} hasAsaas={!!church.asaasApiKey} />
+  return <FinanceiroClient slug={slug} />
 }

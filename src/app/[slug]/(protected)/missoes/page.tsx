@@ -6,6 +6,9 @@ import Link from 'next/link'
 import MissaoActions from './MissaoActions'
 import BeneficiarioActions from './BeneficiarioActions'
 
+export const metadata = { title: 'Missões' }
+
+
 interface Props {
   params: Promise<{ slug: string }>
   searchParams: Promise<{ busca?: string; buscaBenef?: string; status?: string }>

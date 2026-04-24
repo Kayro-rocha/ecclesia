@@ -4,6 +4,9 @@ import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
 
+export const metadata = { title: 'Membros' }
+
+
 interface Props {
   params: Promise<{ slug: string }>
   searchParams: Promise<{ busca?: string; grupo?: string; status?: string }>

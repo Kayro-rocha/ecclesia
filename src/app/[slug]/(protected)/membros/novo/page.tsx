@@ -22,7 +22,7 @@ export default function NovoMembroPage() {
 
   const [form, setForm] = useState({
     name: '', phone: '', cpfCnpj: '', email: '', group: '',
-    role: 'MEMBER', isTither: true, suggestedTithe: '',
+    role: 'MEMBER', isTither: true, suggestedTithe: '', birthDate: '',
   })
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
@@ -115,6 +115,10 @@ export default function NovoMembroPage() {
                 onChange={handleChange} placeholder="0,00" />
             </div>
           )}
+          <div>
+            <label>Data de aniversário</label>
+            <input name="birthDate" type="date" value={form.birthDate} onChange={handleChange} />
+          </div>
 
           {erro && <p style={{ color: '#e53e3e', fontSize: '13px' }}>{erro}</p>}
 

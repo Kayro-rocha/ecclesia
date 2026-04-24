@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
   if (existing) return NextResponse.json({ error: 'Slug já em uso' }, { status: 409 })
 
   const church = await prisma.church.create({
-    data: { name, slug, plan: plan || 'BASIC' },
+    data: { name, slug, plan: plan || 'IGREJA' },
   })
 
   return NextResponse.json(church, { status: 201 })

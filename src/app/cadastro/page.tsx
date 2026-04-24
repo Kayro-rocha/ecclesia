@@ -1,14 +1,39 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { isValidCpfCnpj } from '@/lib/cpf'
 
-type Step = 'igreja' | 'pastor' | 'sucesso'
+type Step = 'validando' | 'token-invalido' | 'igreja' | 'pastor' | 'sucesso'
 
 export default function CadastroPage() {
-  const [step, setStep] = useState<Step>('igreja')
+  return <Suspense><CadastroForm /></Suspense>
+}
+
+function CadastroForm() {
+  const searchParams = useSearchParams()
+  const tokenParam = searchParams.get('token')
+
+  const [step, setStep] = useState<Step>(tokenParam ? 'validando' : 'token-invalido')
+  const [tokenErro, setTokenErro] = useState('')
+  const [tokenValue, setTokenValue] = useState(tokenParam || '')
   const [loading, setLoading] = useState(false)
   const [erro, setErro] = useState('')
+
+  useEffect(() => {
+    if (!tokenParam) { setTokenErro('Link inválido. Acesse seu email para criar a conta.'); setStep('token-invalido'); return }
+    fetch(`/api/onboarding/token?token=${tokenParam}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.valid) {
+          setForm(prev => ({ ...prev, email: data.email }))
+          setStep('igreja')
+        } else {
+          setTokenErro(data.error || 'Link inválido')
+          setStep('token-invalido')
+        }
+      })
+  }, [tokenParam])
 
   const [form, setForm] = useState({
     churchName: '',
@@ -23,7 +48,7 @@ export default function CadastroPage() {
     postalCode: '',
   })
 
-  const [slugStatus, setSlugStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle')
+  const [slugStatus, setSlugStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'reserved'>('idle')
   const slugTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [churchSlug, setChurchSlug] = useState('')
 
@@ -50,7 +75,9 @@ export default function CadastroPage() {
     slugTimer.current = setTimeout(async () => {
       const res = await fetch(`/api/onboarding?slug=${slug}`)
       const data = await res.json()
-      setSlugStatus(data.available ? 'available' : 'taken')
+      if (data.available) setSlugStatus('available')
+      else if (data.reserved) setSlugStatus('reserved')
+      else setSlugStatus('taken')
     }, 500)
   }
 
@@ -58,7 +85,7 @@ export default function CadastroPage() {
     setErro('')
     if (step === 'igreja') {
       if (!form.churchName || !form.slug) { setErro('Preencha o nome e o subdomínio da igreja.'); return }
-      if (slugStatus !== 'available') { setErro('Escolha um subdomínio disponível.'); return }
+      if (slugStatus !== 'available') { setErro('Escolha um subdomínio válido e disponível.'); return }
       setStep('pastor')
     }
   }
@@ -84,7 +111,7 @@ export default function CadastroPage() {
     const res = await fetch('/api/onboarding', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
+      body: JSON.stringify({ ...form, token: tokenValue }),
     })
 
     const data = await res.json()
@@ -99,6 +126,36 @@ export default function CadastroPage() {
   }
 
   const appDomain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'ecclesia.marketcontroll.com'
+
+  if (step === 'validando') {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="text-center">
+          <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-500 text-sm">Validando seu link...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (step === 'token-invalido') {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl border border-gray-100 p-8 w-full max-w-md text-center">
+          <div className="w-14 h-14 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
+            <svg className="w-7 h-7 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </div>
+          <h1 className="text-lg font-semibold text-gray-900 mb-2">Link inválido</h1>
+          <p className="text-sm text-gray-500 mb-6">{tokenErro}</p>
+          <a href="mailto:suporte@marketcontroll.com" className="text-blue-600 text-sm hover:underline">
+            suporte@marketcontroll.com
+          </a>
+        </div>
+      </div>
+    )
+  }
 
   if (step === 'sucesso') {
     const loginUrl = `https://${churchSlug}.${appDomain}/login`
@@ -184,6 +241,9 @@ export default function CadastroPage() {
               {slugStatus === 'taken' && (
                 <p className="text-xs text-red-500 mt-1">✗ Já está em uso. Escolha outro.</p>
               )}
+              {slugStatus === 'reserved' && (
+                <p className="text-xs text-red-500 mt-1">✗ Este nome é reservado. Escolha outro.</p>
+              )}
             </div>
 
             {erro && <p className="text-sm text-red-500">{erro}</p>}
@@ -251,7 +311,7 @@ export default function CadastroPage() {
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-blue-500"
                 placeholder="000.000.000-00"
               />
-              <p className="text-xs text-gray-400 mt-1">Usado para criar sua conta de recebimento no Asaas</p>
+              <p className="text-xs text-gray-400 mt-1">Usado para identificação da sua Igreja</p>
             </div>
             <div>
               <label className="block text-sm text-gray-600 mb-1">Data de nascimento *</label>

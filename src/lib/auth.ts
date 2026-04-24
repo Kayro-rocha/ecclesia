@@ -15,26 +15,13 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null
 
-        console.log('Tentando login:', credentials.email)
-
         const user = await prisma.user.findUnique({
           where: { email: credentials.email },
         })
 
-        console.log('Usuário encontrado:', user ? 'sim' : 'não')
-
         if (!user) return null
 
-        console.log('Hash no banco:', user.password)
-        console.log('Senha digitada:', credentials.password)
-
-        const validPassword = await bcrypt.compare(
-          credentials.password,
-          user.password
-        )
-
-        console.log('Senha válida:', validPassword)
-
+        const validPassword = await bcrypt.compare(credentials.password, user.password)
         if (!validPassword) return null
 
         return {
@@ -43,6 +30,7 @@ export const authOptions: NextAuthOptions = {
           name: user.name,
           role: user.role,
           churchId: user.churchId,
+          permissions: user.permissions ? JSON.parse(user.permissions) : null,
         }
       },
     }),
@@ -52,14 +40,16 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.role = (user as any).role
         token.churchId = (user as any).churchId
+        token.permissions = (user as any).permissions
       }
       return token
     },
     async session({ session, token }) {
       if (token) {
         (session.user as any).role = token.role
-          ; (session.user as any).churchId = token.churchId
-          ; (session.user as any).id = token.sub
+        ;(session.user as any).churchId = token.churchId
+        ;(session.user as any).id = token.sub
+        ;(session.user as any).permissions = token.permissions
       }
       return session
     },

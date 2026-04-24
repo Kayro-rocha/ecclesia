@@ -17,8 +17,8 @@ export async function GET() {
     totalChurches,
     activeChurches,
     inactiveChurches,
-    basicPlan,
-    proPlan,
+    igrejaPlan,
+    redePlan,
     newChurches30d,
     totalMembers,
     totalUsers,
@@ -27,8 +27,8 @@ export async function GET() {
     prisma.church.count(),
     prisma.church.count({ where: { active: true } }),
     prisma.church.count({ where: { active: false } }),
-    prisma.church.count({ where: { plan: 'BASIC', active: true } }),
-    prisma.church.count({ where: { plan: 'PRO', active: true } }),
+    prisma.church.count({ where: { plan: 'IGREJA', active: true } }),
+    prisma.church.count({ where: { plan: 'REDE', active: true } }),
     prisma.church.count({ where: { createdAt: { gte: thirtyDaysAgo } } }),
     prisma.member.count({ where: { active: true } }),
     prisma.user.count(),
@@ -39,8 +39,7 @@ export async function GET() {
     }),
   ])
 
-  // MRR estimado (BASIC = R$97, PRO = R$197)
-  const mrr = basicPlan * 97 + proPlan * 197
+  const mrr = igrejaPlan * 79.9 + redePlan * 199.9
 
   // Agrupa cadastros por mês (últimos 6 meses)
   const last6Months = Array.from({ length: 6 }, (_, i) => {
@@ -64,8 +63,8 @@ export async function GET() {
     totalChurches,
     activeChurches,
     inactiveChurches,
-    basicPlan,
-    proPlan,
+    igrejaPlan,
+    redePlan,
     newChurches30d,
     totalMembers,
     totalUsers,

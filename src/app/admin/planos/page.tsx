@@ -11,7 +11,7 @@ interface ChurchItem {
 
 interface Stats {
   totalChurches: number; activeChurches: number; inactiveChurches: number
-  basicPlan: number; proPlan: number; newChurches30d: number
+  igrejaPlan: number; redePlan: number; newChurches30d: number
   mrr: number; growthChart: { label: string; count: number }[]
 }
 
@@ -20,7 +20,7 @@ export default function AdminPlanosPage() {
   const [stats, setStats] = useState<Stats | null>(null)
   const [churches, setChurches] = useState<ChurchItem[]>([])
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'BASIC' | 'PRO'>('PRO')
+  const [activeTab, setActiveTab] = useState<'IGREJA' | 'REDE'>('IGREJA')
 
   useEffect(() => {
     async function load() {
@@ -75,8 +75,8 @@ export default function AdminPlanosPage() {
         <div className="admin-card">
           <h2 style={{ fontSize: '14px', fontWeight: '600', color: '#94a3b8', margin: '0 0 20px' }}>Breakdown por plano</h2>
           {[
-            { label: 'BASIC', count: stats.basicPlan, price: 97, color: '#3b82f6' },
-            { label: 'PRO', count: stats.proPlan, price: 197, color: '#a78bfa' },
+            { label: 'IGREJA', count: stats.igrejaPlan, price: 79.9, color: '#3b82f6' },
+            { label: 'REDE', count: stats.redePlan, price: 199.9, color: '#a78bfa' },
           ].map(p => {
             const revenue = p.count * p.price
             const pct = stats.activeChurches > 0 ? Math.round((p.count / stats.activeChurches) * 100) : 0
@@ -129,7 +129,7 @@ export default function AdminPlanosPage() {
       <div className="admin-card" style={{ padding: 0, overflow: 'hidden' }}>
         {/* Tabs */}
         <div style={{ display: 'flex', borderBottom: '1px solid #334155' }}>
-          {(['PRO', 'BASIC'] as const).map(tab => (
+          {(['IGREJA', 'REDE'] as const).map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -140,7 +140,7 @@ export default function AdminPlanosPage() {
                 borderBottom: activeTab === tab ? '2px solid #3b82f6' : '2px solid transparent',
               }}
             >
-              {tab} ({tab === 'PRO' ? stats.proPlan : stats.basicPlan})
+              {tab} ({tab === 'REDE' ? stats.redePlan : stats.igrejaPlan})
             </button>
           ))}
         </div>
@@ -165,7 +165,7 @@ export default function AdminPlanosPage() {
                   <p style={{ fontSize: '11px', color: '#475569', margin: '2px 0 0', fontFamily: 'monospace' }}>{c.slug}</p>
                 </td>
                 <td style={{ color: '#94a3b8' }}>{c._count.members}</td>
-                <td style={{ color: '#4ade80', fontWeight: '600' }}>R$ {c.plan === 'PRO' ? '197' : '97'}</td>
+                <td style={{ color: '#4ade80', fontWeight: '600' }}>R$ {c.plan === 'REDE' ? '199,90' : '79,90'}</td>
                 <td style={{ color: '#64748b', fontSize: '12px' }}>{new Date(c.createdAt).toLocaleDateString('pt-BR')}</td>
                 <td>
                   <Link href={`/admin/igrejas/${c.id}`} className="admin-btn admin-btn-ghost" style={{ fontSize: '12px', padding: '4px 10px' }}>Ver</Link>

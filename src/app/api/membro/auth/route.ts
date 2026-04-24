@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { signMembroToken, MEMBRO_COOKIE } from '@/lib/membro-auth'
+import { rateLimit, getIp } from '@/lib/rate-limit'
 import bcrypt from 'bcryptjs'
 
 // Normaliza CPF removendo pontuação
@@ -9,6 +10,10 @@ function normalizeCpf(cpf: string) {
 }
 
 export async function POST(req: NextRequest) {
+  if (!rateLimit(`login:${getIp(req)}`, 10, 60_000)) {
+    return NextResponse.json({ error: 'Muitas tentativas. Aguarde um momento.' }, { status: 429 })
+  }
+
   const { slug, cpf, password } = await req.json()
 
   if (!slug || !cpf) {

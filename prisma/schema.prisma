@@ -19,24 +19,33 @@ model Church {
   asaasAccountId   String?
   asaasApiKey      String?
   whatsappInstance String?
-  plan             Plan     @default(BASIC)
+  phone            String?  // WhatsApp de contato da igreja (visível aos membros)
+  plan             Plan     @default(IGREJA)
+  parentChurchId   String?
   active           Boolean  @default(true)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
-  members           Member[]
-  tithes            Tithe[]
-  offerings         Offering[]
-  schedules         Schedule[]
-  announcements     Announcement[]
-  visitors          Visitor[]
-  missions          Mission[]
-  beneficiaries     Beneficiary[]
-  events            Event[]
-  groups            Group[]
-  expenses          Expense[]
-  incomesManual     IncomeManual[]
-  pushSubscriptions PushSubscription[]
+  parent             Church?  @relation("ChurchFiliais", fields: [parentChurchId], references: [id])
+  filiais            Church[] @relation("ChurchFiliais")
+  members            Member[]
+  tithes             Tithe[]
+  offerings          Offering[]
+  schedules          Schedule[]
+  announcements      Announcement[]
+  visitors           Visitor[]
+  missions           Mission[]
+  beneficiaries      Beneficiary[]
+  events             Event[]
+  groups             Group[]
+  expenses           Expense[]
+  incomesManual      IncomeManual[]
+  pushSubscriptions  PushSubscription[]
+  prayerRequests     PrayerRequest[]
+  cells              Cell[]
+  visitorTemplates   VisitorTemplate[]
+  visitorAutomation  VisitorAutomation?
+  messageTemplates   MessageTemplate[]
 }
 
 model Member {
@@ -51,6 +60,7 @@ model Member {
   active         Boolean    @default(true)
   isTither       Boolean    @default(true)
   suggestedTithe Float?
+  birthDate      DateTime?
   memberPassword String?
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
@@ -61,23 +71,27 @@ model Member {
   attendances       Attendance[]
   eventAttendees    EventAttendee[]
   pushSubscriptions PushSubscription[]
+  prayerRequests    PrayerRequest[]
+  leadingCells      Cell[]             @relation("CellLeader")
+  cellMemberships   CellMember[]
 }
 
 model Tithe {
-  id            String      @id @default(cuid())
-  churchId      String
-  memberId      String
-  amount        Float
-  month         Int
-  year          Int
-  status        TitheStatus @default(PENDING)
-  asaasChargeId String?
-  qrCodeBase64  String?     @db.LongText
-  paidAt        DateTime?
-  createdAt     DateTime    @default(now())
+  id        String      @id @default(cuid())
+  churchId  String
+  memberId  String
+  amount    Float
+  month     Int
+  year      Int
+  status    TitheStatus @default(PAID)
+  paidAt    DateTime?
+  createdAt DateTime    @default(now())
 
-  church Church @relation(fields: [churchId], references: [id])
-  member Member @relation(fields: [memberId], references: [id])
+  church        Church         @relation(fields: [churchId], references: [id])
+  member        Member         @relation(fields: [memberId], references: [id])
+  incomesManual IncomeManual[]
+
+  @@unique([churchId, memberId, month, year])
 }
 
 model Offering {
@@ -168,6 +182,29 @@ model VisitorContact {
   visitor Visitor @relation(fields: [visitorId], references: [id])
 }
 
+model VisitorTemplate {
+  id        String   @id @default(cuid())
+  churchId  String
+  title     String
+  text      String   @db.Text
+  createdAt DateTime @default(now())
+
+  church Church @relation(fields: [churchId], references: [id])
+}
+
+model VisitorAutomation {
+  id          String    @id @default(cuid())
+  churchId    String    @unique
+  enabled     Boolean   @default(false)
+  triggerDays Int       @default(3)
+  message     String    @db.Text
+  lastRunAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  church Church @relation(fields: [churchId], references: [id])
+}
+
 model Mission {
   id           String   @id @default(cuid())
   churchId     String
@@ -229,6 +266,9 @@ model Event {
   imageUrl    String?
   createdAt   DateTime @default(now())
 
+  cellId    String?
+  cell      Cell?           @relation(fields: [cellId], references: [id])
+
   church    Church          @relation(fields: [churchId], references: [id])
   attendees EventAttendee[]
 }
@@ -274,6 +314,7 @@ model Expense {
 model IncomeManual {
   id          String         @id @default(cuid())
   churchId    String
+  titheId     String?
   description String
   amount      Float
   category    IncomeCategory
@@ -281,6 +322,19 @@ model IncomeManual {
   createdAt   DateTime       @default(now())
 
   church Church @relation(fields: [churchId], references: [id])
+  tithe  Tithe? @relation(fields: [titheId], references: [id])
+}
+
+model PrayerRequest {
+  id        String              @id @default(cuid())
+  churchId  String
+  memberId  String
+  request   String              @db.Text
+  status    PrayerRequestStatus @default(PENDING)
+  createdAt DateTime            @default(now())
+
+  church Church @relation(fields: [churchId], references: [id])
+  member Member @relation(fields: [memberId], references: [id])
 }
 
 model PushSubscription {
@@ -297,18 +351,84 @@ model PushSubscription {
 }
 
 model User {
+  id          String   @id @default(cuid())
+  churchId    String?
+  name        String
+  email       String   @unique
+  password    String
+  role        UserRole @default(PASTOR)
+  permissions String?  // JSON array de módulos, null = acesso total
+  createdAt   DateTime @default(now())
+}
+
+model Cell {
   id        String   @id @default(cuid())
-  churchId  String?
+  churchId  String
   name      String
-  email     String   @unique
-  password  String
-  role      UserRole @default(PASTOR)
+  leaderId  String
+  dayOfWeek Int
+  active    Boolean  @default(true)
   createdAt DateTime @default(now())
+
+  church  Church       @relation(fields: [churchId], references: [id])
+  leader  Member       @relation("CellLeader", fields: [leaderId], references: [id])
+  members CellMember[]
+  events  Event[]
+}
+
+model CellMember {
+  id       String @id @default(cuid())
+  cellId   String
+  memberId String
+
+  cell   Cell   @relation(fields: [cellId], references: [id], onDelete: Cascade)
+  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([cellId, memberId])
 }
 
 enum Plan {
-  BASIC
-  PRO
+  IGREJA
+  REDE
+}
+
+model MessageTemplate {
+  id        String   @id @default(cuid())
+  churchId  String
+  title     String
+  body      String   @db.Text
+  createdAt DateTime @default(now())
+
+  church Church @relation(fields: [churchId], references: [id])
+}
+
+model MemberResetToken {
+  id        String    @id @default(cuid())
+  memberId  String
+  slug      String
+  token     String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  email     String
+  token     String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+}
+
+model OnboardingToken {
+  id        String    @id @default(cuid())
+  email     String
+  token     String    @unique
+  plan      Plan      @default(IGREJA)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
 }
 
 enum MemberRole {
@@ -361,4 +481,9 @@ enum ScheduleItemStatus {
   PENDING
   CONFIRMED
   DECLINED
+}
+
+enum PrayerRequestStatus {
+  PENDING
+  PRAYED
 }

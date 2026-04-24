@@ -21,14 +21,6 @@ const INCOME_LABELS: Record<string, string> = {
   OTHER: 'Outros',
 }
 
-const PIX_KEY_TYPES = [
-  { value: 'CPF', label: 'CPF' },
-  { value: 'CNPJ', label: 'CNPJ' },
-  { value: 'EMAIL', label: 'E-mail' },
-  { value: 'PHONE', label: 'Telefone' },
-  { value: 'EVP', label: 'Chave aleatória' },
-]
-
 const fmt = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
@@ -41,7 +33,6 @@ interface Summary {
   totalReceitas: number
   totalDespesas: number
   resultado: number
-  breakdown: { totalTithes: number; totalOfferings: number; totalIncomesManual: number }
   expensesByCategory: Record<string, number>
   incomesByCategory: Record<string, number>
   history: { month: number; year: number; receitas: number; despesas: number }[]
@@ -66,46 +57,35 @@ interface Income {
 
 interface ReceitaItem {
   id: string
-  source: 'TITHE' | 'OFFERING' | 'MANUAL'
   description: string
+  category: string
+  categoryLabel: string
   amount: number
-  date: string | null
+  date: string
+  isFromTithe: boolean
 }
 
 interface Props {
   slug: string
-  hasAsaas: boolean
 }
 
-export default function FinanceiroClient({ slug, hasAsaas }: Props) {
+export default function FinanceiroClient({ slug }: Props) {
   const now = new Date()
-  const [tab, setTab] = useState<'geral' | 'receitas' | 'despesas' | 'relatorio' | 'saque'>('geral')
+  const [tab, setTab] = useState<'geral' | 'receitas' | 'despesas' | 'relatorio'>('geral')
   const [month, setMonth] = useState(now.getMonth() + 1)
   const [year, setYear] = useState(now.getFullYear())
 
   const [summary, setSummary] = useState<Summary | null>(null)
-  const [balance, setBalance] = useState<number | null>(null)
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [incomes, setIncomes] = useState<Income[]>([])
   const [receitas, setReceitas] = useState<ReceitaItem[]>([])
 
   const [loadingSummary, setLoadingSummary] = useState(true)
-  const [loadingBalance, setLoadingBalance] = useState(true)
 
-  // Modals
   const [showExpenseModal, setShowExpenseModal] = useState(false)
   const [showIncomeModal, setShowIncomeModal] = useState(false)
-  const [showSaqueModal, setShowSaqueModal] = useState(false)
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
   const [editingIncome, setEditingIncome] = useState<Income | null>(null)
-
-  // Saque form
-  const [saqueAmount, setSaqueAmount] = useState('')
-  const [saquePixKey, setSaquePixKey] = useState('')
-  const [saquePixType, setSaquePixType] = useState('CPF')
-  const [saqueDesc, setSaqueDesc] = useState('')
-  const [saqueLoading, setSaqueLoading] = useState(false)
-  const [saqueMsg, setSaqueMsg] = useState('')
 
   const fetchSummary = useCallback(async () => {
     setLoadingSummary(true)
@@ -114,15 +94,6 @@ export default function FinanceiroClient({ slug, hasAsaas }: Props) {
     setSummary(data)
     setLoadingSummary(false)
   }, [slug, month, year])
-
-  const fetchBalance = useCallback(async () => {
-    if (!hasAsaas) { setLoadingBalance(false); return }
-    setLoadingBalance(true)
-    const res = await fetch(`/api/financial/balance?slug=${slug}`)
-    const data = await res.json()
-    setBalance(data.balance ?? null)
-    setLoadingBalance(false)
-  }, [slug, hasAsaas])
 
   const fetchExpenses = useCallback(async () => {
     const res = await fetch(`/api/expenses?slug=${slug}&month=${month}&year=${year}`)
@@ -156,12 +127,10 @@ export default function FinanceiroClient({ slug, hasAsaas }: Props) {
     const load = async () => {
       const generated = await generateRecurring()
       fetchSummary()
-      fetchBalance()
       fetchExpenses()
       fetchIncomes()
       fetchReceitas()
       if (generated > 0) {
-        // Pequeno toast informando que as fixas foram geradas
         const msg = document.createElement('div')
         msg.textContent = `${generated} despesa${generated > 1 ? 's' : ''} fixa${generated > 1 ? 's' : ''} gerada${generated > 1 ? 's' : ''} automaticamente`
         Object.assign(msg.style, {
@@ -175,15 +144,15 @@ export default function FinanceiroClient({ slug, hasAsaas }: Props) {
       }
     }
     load()
-  }, [generateRecurring, fetchSummary, fetchBalance, fetchExpenses, fetchIncomes, fetchReceitas])
+  }, [generateRecurring, fetchSummary, fetchExpenses, fetchIncomes, fetchReceitas])
 
   const prevMonth = () => {
-    if (month === 1) { setMonth(12); setYear(y => y - 1) }
-    else setMonth(m => m - 1)
+    if (month === 1) { setMonth(12); setYear((y) => y - 1) }
+    else setMonth((m) => m - 1)
   }
   const nextMonth = () => {
-    if (month === 12) { setMonth(1); setYear(y => y + 1) }
-    else setMonth(m => m + 1)
+    if (month === 12) { setMonth(1); setYear((y) => y + 1) }
+    else setMonth((m) => m + 1)
   }
 
   const deleteExpense = async (id: string) => {
@@ -199,27 +168,6 @@ export default function FinanceiroClient({ slug, hasAsaas }: Props) {
     fetchIncomes()
     fetchReceitas()
     fetchSummary()
-  }
-
-  const handleSaque = async () => {
-    setSaqueLoading(true)
-    setSaqueMsg('')
-    try {
-      const res = await fetch('/api/financial/saque', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          slug, amount: saqueAmount, pixKey: saquePixKey,
-          pixKeyType: saquePixType, description: saqueDesc,
-        }),
-      })
-      const data = await res.json()
-      if (!res.ok) setSaqueMsg('Erro: ' + (data.error || 'Tente novamente'))
-      else { setSaqueMsg('Saque solicitado com sucesso!'); fetchBalance() }
-    } catch {
-      setSaqueMsg('Erro ao solicitar saque.')
-    }
-    setSaqueLoading(false)
   }
 
   const TAB_STYLE = (active: boolean) => ({
@@ -242,7 +190,6 @@ export default function FinanceiroClient({ slug, hasAsaas }: Props) {
       <div className="page-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <span style={{ fontWeight: '600', color: '#1a1a2e', fontSize: '16px' }}>Financeiro</span>
-          {/* Navegação de mês */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#f7fafc', borderRadius: '8px', padding: '4px 8px' }}>
             <button onClick={prevMonth} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#718096', fontSize: '16px', padding: '2px 6px' }}>‹</button>
             <span style={{ fontSize: '13px', fontWeight: '600', color: '#1a1a2e', minWidth: '130px', textAlign: 'center' }}>
@@ -256,15 +203,6 @@ export default function FinanceiroClient({ slug, hasAsaas }: Props) {
       <div className="page-content">
         {/* Cards resumo */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-          {hasAsaas && (
-            <div className="card" style={{ borderLeft: '4px solid #667eea' }}>
-              <p style={{ fontSize: '12px', color: '#a0aec0', marginBottom: '6px' }}>Saldo Asaas</p>
-              <p style={{ fontSize: '22px', fontWeight: '700', color: '#1a1a2e' }}>
-                {loadingBalance ? '...' : balance !== null ? fmt(balance) : '—'}
-              </p>
-              <p style={{ fontSize: '11px', color: '#a0aec0', marginTop: '4px' }}>Disponível para saque</p>
-            </div>
-          )}
           <div className="card" style={{ borderLeft: '4px solid #48bb78' }}>
             <p style={{ fontSize: '12px', color: '#a0aec0', marginBottom: '6px' }}>Receitas do mês</p>
             <p style={{ fontSize: '22px', fontWeight: '700', color: '#276749' }}>
@@ -297,7 +235,6 @@ export default function FinanceiroClient({ slug, hasAsaas }: Props) {
             ['receitas', 'Receitas'],
             ['despesas', 'Despesas'],
             ['relatorio', 'Relatório'],
-            ['saque', 'Saque'],
           ] as const).map(([key, label]) => (
             <button key={key} style={TAB_STYLE(tab === key)} onClick={() => setTab(key)}>
               {label}
@@ -308,7 +245,6 @@ export default function FinanceiroClient({ slug, hasAsaas }: Props) {
         {/* TAB: VISÃO GERAL */}
         {tab === 'geral' && (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-            {/* Receitas por categoria */}
             <div className="card">
               <p style={{ fontWeight: '600', marginBottom: '16px', color: '#1a1a2e' }}>Receitas por origem</p>
               {loadingSummary ? <p style={{ color: '#a0aec0' }}>Carregando...</p> : (
@@ -337,7 +273,6 @@ export default function FinanceiroClient({ slug, hasAsaas }: Props) {
               )}
             </div>
 
-            {/* Despesas por categoria */}
             <div className="card">
               <p style={{ fontWeight: '600', marginBottom: '16px', color: '#1a1a2e' }}>Despesas por categoria</p>
               {loadingSummary ? <p style={{ color: '#a0aec0' }}>Carregando...</p> : (
@@ -366,7 +301,6 @@ export default function FinanceiroClient({ slug, hasAsaas }: Props) {
               )}
             </div>
 
-            {/* Histórico 6 meses */}
             <div className="card" style={{ gridColumn: '1 / -1' }}>
               <p style={{ fontWeight: '600', marginBottom: '16px', color: '#1a1a2e' }}>Histórico — últimos 6 meses</p>
               {loadingSummary ? <p style={{ color: '#a0aec0' }}>Carregando...</p> : (
@@ -405,7 +339,7 @@ export default function FinanceiroClient({ slug, hasAsaas }: Props) {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <p style={{ color: '#718096', fontSize: '13px' }}>
-                {receitas.length} entrada{receitas.length !== 1 ? 's' : ''} · dízimos PIX + ofertas + lançamentos manuais
+                {receitas.length} entrada{receitas.length !== 1 ? 's' : ''}
               </p>
               <button className="btn-primary" onClick={() => { setEditingIncome(null); setShowIncomeModal(true) }}>
                 + Lançar receita
@@ -416,7 +350,7 @@ export default function FinanceiroClient({ slug, hasAsaas }: Props) {
               <div className="card" style={{ textAlign: 'center', padding: '48px' }}>
                 <p style={{ color: '#a0aec0', fontSize: '14px' }}>Nenhuma receita neste mês</p>
                 <p style={{ color: '#cbd5e0', fontSize: '12px', marginTop: '4px' }}>
-                  Dízimos e ofertas pagos via PIX aparecem aqui automaticamente
+                  Dízimos marcados como pagos e lançamentos manuais aparecem aqui
                 </p>
               </div>
             ) : (
@@ -425,7 +359,7 @@ export default function FinanceiroClient({ slug, hasAsaas }: Props) {
                   <thead>
                     <tr>
                       <th>Descrição</th>
-                      <th>Origem</th>
+                      <th>Categoria</th>
                       <th>Data</th>
                       <th style={{ textAlign: 'right' }}>Valor</th>
                       <th></th>
@@ -436,19 +370,19 @@ export default function FinanceiroClient({ slug, hasAsaas }: Props) {
                       <tr key={r.id}>
                         <td>{r.description}</td>
                         <td>
-                          {r.source === 'TITHE' && <span className="badge-blue">Dízimo PIX</span>}
-                          {r.source === 'OFFERING' && <span className="badge-green">Oferta PIX</span>}
-                          {r.source === 'MANUAL' && <span className="badge-gray">Manual</span>}
+                          <span className={r.category === 'TITHE' ? 'badge-blue' : r.category === 'OFFERING' ? 'badge-green' : 'badge-gray'}>
+                            {r.categoryLabel}
+                          </span>
                         </td>
                         <td style={{ color: '#718096' }}>
-                          {r.date ? new Date(r.date).toLocaleDateString('pt-BR') : '—'}
+                          {new Date(r.date).toLocaleDateString('pt-BR')}
                         </td>
                         <td style={{ textAlign: 'right', fontWeight: '600', color: '#276749' }}>{fmt(r.amount)}</td>
                         <td>
-                          {r.source === 'MANUAL' && (
+                          {!r.isFromTithe && (
                             <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
                               <button onClick={() => {
-                                const income = incomes.find(i => i.id === r.id)
+                                const income = incomes.find((i) => i.id === r.id)
                                 if (income) { setEditingIncome(income); setShowIncomeModal(true) }
                               }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#718096', fontSize: '13px' }}>Editar</button>
                               <button onClick={() => deleteIncome(r.id)}
@@ -470,7 +404,7 @@ export default function FinanceiroClient({ slug, hasAsaas }: Props) {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <p style={{ color: '#718096', fontSize: '13px' }}>
-                {expenses.filter(e => e.isRecurring).length} fixas · {expenses.filter(e => !e.isRecurring).length} avulsas
+                {expenses.filter((e) => e.isRecurring).length} fixas · {expenses.filter((e) => !e.isRecurring).length} avulsas
               </p>
               <button className="btn-primary" onClick={() => { setEditingExpense(null); setShowExpenseModal(true) }}>
                 + Lançar despesa
@@ -538,20 +472,23 @@ export default function FinanceiroClient({ slug, hasAsaas }: Props) {
 
             {loadingSummary ? <p style={{ color: '#a0aec0' }}>Carregando...</p> : summary && (
               <div>
-                {/* Receitas */}
                 <p style={{ fontWeight: '600', color: '#276749', marginBottom: '8px', fontSize: '14px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                   RECEITAS
                 </p>
                 <table style={{ marginBottom: '16px' }}>
                   <tbody>
-                    <tr><td style={{ color: '#4a5568' }}>Dízimo (PIX)</td><td style={{ textAlign: 'right', color: '#276749' }}>{fmt(summary.breakdown.totalTithes)}</td></tr>
-                    <tr><td style={{ color: '#4a5568' }}>Ofertas (PIX)</td><td style={{ textAlign: 'right', color: '#276749' }}>{fmt(summary.breakdown.totalOfferings)}</td></tr>
                     {Object.entries(summary.incomesByCategory)
-                      .filter(([cat]) => !['TITHE', 'OFFERING'].includes(cat))
                       .filter(([, v]) => v > 0)
+                      .sort(([, a], [, b]) => b - a)
                       .map(([cat, val]) => (
-                        <tr key={cat}><td style={{ color: '#4a5568' }}>{INCOME_LABELS[cat] || cat}</td><td style={{ textAlign: 'right', color: '#276749' }}>{fmt(val)}</td></tr>
+                        <tr key={cat}>
+                          <td style={{ color: '#4a5568' }}>{INCOME_LABELS[cat] || cat}</td>
+                          <td style={{ textAlign: 'right', color: '#276749' }}>{fmt(val)}</td>
+                        </tr>
                       ))}
+                    {summary.totalReceitas === 0 && (
+                      <tr><td colSpan={2} style={{ color: '#a0aec0', fontSize: '13px' }}>Nenhuma receita</td></tr>
+                    )}
                     <tr style={{ borderTop: '2px solid #edf2f7' }}>
                       <td style={{ fontWeight: '700' }}>Total Receitas</td>
                       <td style={{ textAlign: 'right', fontWeight: '700', color: '#276749', fontSize: '16px' }}>{fmt(summary.totalReceitas)}</td>
@@ -559,7 +496,6 @@ export default function FinanceiroClient({ slug, hasAsaas }: Props) {
                   </tbody>
                 </table>
 
-                {/* Despesas */}
                 <p style={{ fontWeight: '600', color: '#742a2a', marginBottom: '8px', fontSize: '14px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                   DESPESAS
                 </p>
@@ -569,9 +505,14 @@ export default function FinanceiroClient({ slug, hasAsaas }: Props) {
                       .filter(([, v]) => v > 0)
                       .sort(([, a], [, b]) => b - a)
                       .map(([cat, val]) => (
-                        <tr key={cat}><td style={{ color: '#4a5568' }}>{EXPENSE_LABELS[cat] || cat}</td><td style={{ textAlign: 'right', color: '#742a2a' }}>{fmt(val)}</td></tr>
+                        <tr key={cat}>
+                          <td style={{ color: '#4a5568' }}>{EXPENSE_LABELS[cat] || cat}</td>
+                          <td style={{ textAlign: 'right', color: '#742a2a' }}>{fmt(val)}</td>
+                        </tr>
                       ))}
-                    {summary.totalDespesas === 0 && <tr><td colSpan={2} style={{ color: '#a0aec0', fontSize: '13px' }}>Nenhuma despesa</td></tr>}
+                    {summary.totalDespesas === 0 && (
+                      <tr><td colSpan={2} style={{ color: '#a0aec0', fontSize: '13px' }}>Nenhuma despesa</td></tr>
+                    )}
                     <tr style={{ borderTop: '2px solid #edf2f7' }}>
                       <td style={{ fontWeight: '700' }}>Total Despesas</td>
                       <td style={{ textAlign: 'right', fontWeight: '700', color: '#742a2a', fontSize: '16px' }}>{fmt(summary.totalDespesas)}</td>
@@ -579,7 +520,6 @@ export default function FinanceiroClient({ slug, hasAsaas }: Props) {
                   </tbody>
                 </table>
 
-                {/* Resultado */}
                 <div style={{
                   background: resultadoPositivo ? '#f0fff4' : '#fff5f5',
                   border: `1px solid ${resultadoPositivo ? '#c6f6d5' : '#fed7d7'}`,
@@ -597,68 +537,8 @@ export default function FinanceiroClient({ slug, hasAsaas }: Props) {
             )}
           </div>
         )}
-
-        {/* TAB: SAQUE */}
-        {tab === 'saque' && (
-          <div style={{ maxWidth: '480px' }}>
-            <div className="card" style={{ marginBottom: '20px' }}>
-              <p style={{ fontWeight: '600', marginBottom: '4px' }}>Saldo disponível na subconta</p>
-              <p style={{ fontSize: '32px', fontWeight: '700', color: '#667eea' }}>
-                {loadingBalance ? '...' : balance !== null ? fmt(balance) : '—'}
-              </p>
-              {!hasAsaas && <p style={{ color: '#a0aec0', fontSize: '13px', marginTop: '8px' }}>Subconta Asaas não configurada</p>}
-            </div>
-
-            {hasAsaas && (
-              <div className="card">
-                <p style={{ fontWeight: '600', marginBottom: '8px' }}>Solicitar saque via PIX</p>
-                {process.env.NODE_ENV !== 'production' && (
-                  <div style={{ background: '#fffbeb', border: '1px solid #f6e05e', borderRadius: '8px', padding: '10px 14px', marginBottom: '16px', fontSize: '12px', color: '#744210' }}>
-                    ⚠️ <strong>Ambiente sandbox:</strong> chaves PIX reais não funcionam no Asaas sandbox. Em produção o saque funciona normalmente.
-                  </div>
-                )}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  <div>
-                    <label>Valor (R$)</label>
-                    <input type="number" step="0.01" min="0.01" value={saqueAmount}
-                      onChange={e => setSaqueAmount(e.target.value)} placeholder="0,00" />
-                  </div>
-                  <div>
-                    <label>Tipo de chave PIX</label>
-                    <select value={saquePixType} onChange={e => setSaquePixType(e.target.value)}>
-                      {PIX_KEY_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label>Chave PIX de destino</label>
-                    <input value={saquePixKey} onChange={e => setSaquePixKey(e.target.value)}
-                      placeholder={saquePixType === 'CPF' ? '000.000.000-00' : saquePixType === 'EMAIL' ? 'email@exemplo.com' : 'Chave PIX'} />
-                  </div>
-                  <div>
-                    <label>Descrição (opcional)</label>
-                    <input value={saqueDesc} onChange={e => setSaqueDesc(e.target.value)}
-                      placeholder="Ex: Pagamento de aluguel" />
-                  </div>
-                  {saqueMsg && (
-                    <div style={{
-                      padding: '10px 14px', borderRadius: '8px', fontSize: '13px',
-                      background: saqueMsg.startsWith('Erro') ? '#fff5f5' : '#f0fff4',
-                      color: saqueMsg.startsWith('Erro') ? '#742a2a' : '#276749',
-                    }}>
-                      {saqueMsg}
-                    </div>
-                  )}
-                  <button className="btn-primary" onClick={handleSaque} disabled={saqueLoading || !saqueAmount || !saquePixKey}>
-                    {saqueLoading ? 'Processando...' : 'Solicitar saque'}
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
       </div>
 
-      {/* MODAL DESPESA */}
       {showExpenseModal && (
         <ExpenseModal
           slug={slug}
@@ -670,7 +550,6 @@ export default function FinanceiroClient({ slug, hasAsaas }: Props) {
         />
       )}
 
-      {/* MODAL RECEITA */}
       {showIncomeModal && (
         <IncomeModal
           slug={slug}
@@ -685,7 +564,6 @@ export default function FinanceiroClient({ slug, hasAsaas }: Props) {
   )
 }
 
-// ---- MODAL DESPESA ----
 function ExpenseModal({ slug, editing, month, year, onClose, onSave }: {
   slug: string
   editing: Expense | null
@@ -718,17 +596,17 @@ function ExpenseModal({ slug, editing, month, year, onClose, onSave }: {
   return (
     <Modal title={editing ? 'Editar despesa' : 'Nova despesa'} onClose={onClose}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-        <div><label>Descrição</label><input value={description} onChange={e => setDescription(e.target.value)} placeholder="Ex: Conta de luz" /></div>
-        <div><label>Valor (R$)</label><input type="number" step="0.01" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0,00" /></div>
+        <div><label>Descrição</label><input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Ex: Conta de luz" /></div>
+        <div><label>Valor (R$)</label><input type="number" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0,00" /></div>
         <div>
           <label>Categoria</label>
-          <select value={category} onChange={e => setCategory(e.target.value)}>
+          <select value={category} onChange={(e) => setCategory(e.target.value)}>
             {Object.entries(EXPENSE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
         </div>
-        <div><label>Data</label><input type="date" value={date} onChange={e => setDate(e.target.value)} /></div>
+        <div><label>Data</label><input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></div>
         <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', marginTop: '4px' }}>
-          <input type="checkbox" checked={isRecurring} onChange={e => setIsRecurring(e.target.checked)}
+          <input type="checkbox" checked={isRecurring} onChange={(e) => setIsRecurring(e.target.checked)}
             style={{ width: 'auto', accentColor: 'var(--primary)' }} />
           Gasto fixo (recorrente)
         </label>
@@ -740,7 +618,6 @@ function ExpenseModal({ slug, editing, month, year, onClose, onSave }: {
   )
 }
 
-// ---- MODAL RECEITA MANUAL ----
 function IncomeModal({ slug, editing, month, year, onClose, onSave }: {
   slug: string
   editing: Income | null
@@ -772,15 +649,15 @@ function IncomeModal({ slug, editing, month, year, onClose, onSave }: {
   return (
     <Modal title={editing ? 'Editar receita' : 'Lançar receita'} onClose={onClose}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-        <div><label>Descrição</label><input value={description} onChange={e => setDescription(e.target.value)} placeholder="Ex: Coleta culto domingo" /></div>
-        <div><label>Valor (R$)</label><input type="number" step="0.01" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0,00" /></div>
+        <div><label>Descrição</label><input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Ex: Coleta culto domingo" /></div>
+        <div><label>Valor (R$)</label><input type="number" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0,00" /></div>
         <div>
           <label>Categoria</label>
-          <select value={category} onChange={e => setCategory(e.target.value)}>
+          <select value={category} onChange={(e) => setCategory(e.target.value)}>
             {Object.entries(INCOME_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
         </div>
-        <div><label>Data</label><input type="date" value={date} onChange={e => setDate(e.target.value)} /></div>
+        <div><label>Data</label><input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></div>
         <button className="btn-primary" onClick={save} disabled={loading || !description || !amount}>
           {loading ? 'Salvando...' : editing ? 'Salvar alterações' : 'Lançar receita'}
         </button>
@@ -789,13 +666,12 @@ function IncomeModal({ slug, editing, month, year, onClose, onSave }: {
   )
 }
 
-// ---- MODAL BASE ----
 function Modal({ title, children, onClose }: { title: string; children: React.ReactNode; onClose: () => void }) {
   return (
     <div style={{
       position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
       display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100,
-    }} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+    }} onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
       <div style={{ background: 'white', borderRadius: '12px', padding: '28px', width: '100%', maxWidth: '440px', boxShadow: '0 20px 60px rgba(0,0,0,0.15)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
           <p style={{ fontWeight: '700', fontSize: '16px', color: '#1a1a2e' }}>{title}</p>

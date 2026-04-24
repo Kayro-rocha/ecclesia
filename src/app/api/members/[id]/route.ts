@@ -11,6 +11,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const member = await prisma.member.findUnique({ where: { id } })
   if (!member) return NextResponse.json({ error: 'Não encontrado' }, { status: 404 })
 
+  const userGet = session.user as any
+  if (userGet.role !== 'MASTER' && userGet.churchId !== member.churchId) {
+    return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
+  }
+
   return NextResponse.json(member)
 }
 
@@ -22,6 +27,11 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
 
   const existing = await prisma.member.findUnique({ where: { id } })
   if (!existing) return NextResponse.json({ error: 'Não encontrado' }, { status: 404 })
+
+  const userDel = session.user as any
+  if (userDel.role !== 'MASTER' && userDel.churchId !== existing.churchId) {
+    return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
+  }
 
   // Remove registros dependentes antes de apagar o membro
   await prisma.attendance.deleteMany({ where: { memberId: id } })
@@ -38,7 +48,15 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const { id } = await params
   const body = await req.json()
-  const { name, phone, cpfCnpj, email, group, role, isTither, suggestedTithe, active } = body
+  const { name, phone, cpfCnpj, email, group, role, isTither, suggestedTithe, birthDate, active } = body
+
+  const existing = await prisma.member.findUnique({ where: { id }, select: { churchId: true } })
+  if (!existing) return NextResponse.json({ error: 'Não encontrado' }, { status: 404 })
+
+  const userPut = session.user as any
+  if (userPut.role !== 'MASTER' && userPut.churchId !== existing.churchId) {
+    return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
+  }
 
   const member = await prisma.member.update({
     where: { id },
@@ -51,6 +69,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       role,
       isTither,
       suggestedTithe: suggestedTithe ? parseFloat(suggestedTithe) : null,
+      birthDate: birthDate ? new Date(birthDate) : null,
       active,
     },
   })

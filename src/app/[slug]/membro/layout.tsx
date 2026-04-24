@@ -9,8 +9,9 @@ interface Props {
 export async function generateMetadata({ params }: Props) {
   const { slug } = await params
   const church = await prisma.church.findUnique({ where: { slug }, select: { name: true } })
+  const name = church?.name ?? 'Ecclesia'
   return {
-    title: church?.name ? `${church.name} — Área do Membro` : 'Área do Membro',
+    title: { template: `%s | ${name}`, default: name },
     manifest: `/api/membro/manifest?slug=${slug}`,
     appleWebApp: {
       capable: true,
