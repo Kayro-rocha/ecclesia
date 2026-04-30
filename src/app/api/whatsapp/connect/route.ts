@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { getOrCreateQr } from '@/lib/evolution'
+import { getOrCreateQr, registerWebhook } from '@/lib/evolution'
 import { hasChurchAccess } from '@/lib/access'
 
 export async function POST(req: NextRequest) {
@@ -23,6 +23,9 @@ export async function POST(req: NextRequest) {
 
   // Salva nome da instância na church (= slug, sempre)
   await prisma.church.update({ where: { slug }, data: { whatsappInstance: slug } })
+
+  // Registra webhook para capturar respostas de visitantes
+  registerWebhook(slug).catch(() => {})
 
   return NextResponse.json({ qr, status })
 }

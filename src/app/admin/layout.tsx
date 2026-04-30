@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import Link from 'next/link'
-import { LayoutDashboard, Building2, Users, CreditCard } from 'lucide-react'
+import { LayoutDashboard, Building2, Users, CreditCard, ScrollText } from 'lucide-react'
 import AdminLogoutButton from './AdminLogoutButton'
 
 export const metadata: Metadata = {
@@ -14,6 +14,7 @@ const navItems = [
   { href: '/admin/igrejas',   label: 'Igrejas',    Icon: Building2       },
   { href: '/admin/usuarios',  label: 'Usuários',   Icon: Users           },
   { href: '/admin/planos',    label: 'Planos',     Icon: CreditCard      },
+  { href: '/admin/logs',      label: 'Auditoria',  Icon: ScrollText      },
 ]
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {

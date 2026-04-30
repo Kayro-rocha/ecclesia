@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import webpush from 'web-push'
+import { sendFcmToMany } from '@/lib/fcm'
 
 webpush.setVapidDetails(
   process.env.VAPID_MAILTO!,
@@ -85,5 +86,26 @@ export async function POST(req: NextRequest) {
     await prisma.pushSubscription.deleteMany({ where: { id: { in: toDelete } } })
   }
 
-  return NextResponse.json({ ok: true, sent, total: pendingTithes.length })
+  // FCM (app nativo Android)
+  const fcmMembers = await prisma.member.findMany({
+    where: { id: { in: pendingMemberIds }, fcmToken: { not: null } },
+    select: { fcmToken: true },
+  })
+  const fcmTokens = fcmMembers.map(m => m.fcmToken!)
+  let fcmSent = 0
+  if (fcmTokens.length > 0) {
+    const firstName = pendingTithes[0]?.member.name.split(' ')[0] ?? ''
+    const title = `💰 Dízimo de ${MESES[month - 1]} pendente`
+    const body = `${firstName}, seu dízimo de ${MESES[month - 1]} ${year} ainda não foi pago.`
+    const result = await sendFcmToMany(fcmTokens, title, body)
+    fcmSent = result.sent
+    if (result.invalid.length > 0) {
+      await prisma.member.updateMany({
+        where: { fcmToken: { in: result.invalid } },
+        data: { fcmToken: null },
+      })
+    }
+  }
+
+  return NextResponse.json({ ok: true, sent: sent + fcmSent, total: pendingTithes.length })
 }

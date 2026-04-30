@@ -118,7 +118,7 @@ export async function registerAsaasWebhook(apiKey: string, webhookUrl: string, a
     body: JSON.stringify({
       name: 'Ecclesia Pagamentos',
       url: webhookUrl,
-      email: 'webhooks@ecclesia.app',
+      email: 'webhooks@ecclesiaa.com',
       sendType: 'SEQUENTIALLY',
       enabled: true,
       interrupted: false,

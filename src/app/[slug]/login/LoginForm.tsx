@@ -40,20 +40,26 @@ export default function LoginForm({ slug, churchName, primaryColor, secondaryCol
                    radial-gradient(ellipse at 70% 80%, ${secondaryColor}44 0%, transparent 50%),
                    linear-gradient(135deg, #0f172a 0%, #1e293b 100%)`,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      padding: '24px', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+      padding: '16px', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
       position: 'relative', overflow: 'hidden',
     }}>
+      <style>{`
+        .login-card { padding: 40px 36px !important; }
+        @media (max-width: 480px) { .login-card { padding: 28px 20px !important; } }
+        .login-input::placeholder { color: rgba(255,255,255,0.25); }
+        .login-input:focus { outline: none; }
+      `}</style>
 
       {/* Blobs decorativos */}
       <div style={{ position: 'absolute', top: '-80px', left: '-80px', width: '300px', height: '300px', borderRadius: '50%', background: `${primaryColor}22`, filter: 'blur(60px)', pointerEvents: 'none' }} />
       <div style={{ position: 'absolute', bottom: '-60px', right: '-60px', width: '260px', height: '260px', borderRadius: '50%', background: `${secondaryColor}22`, filter: 'blur(60px)', pointerEvents: 'none' }} />
 
       {/* Card */}
-      <div style={{
+      <div className="login-card" style={{
         width: '100%', maxWidth: '380px', position: 'relative', zIndex: 1,
         background: 'rgba(255,255,255,0.07)', backdropFilter: 'blur(20px)',
-        border: '1px solid rgba(255,255,255,0.12)', borderRadius: '28px',
-        padding: '40px 36px', boxShadow: '0 24px 64px rgba(0,0,0,0.4)',
+        border: '1px solid rgba(255,255,255,0.12)', borderRadius: '24px',
+        boxShadow: '0 24px 64px rgba(0,0,0,0.4)',
       }}>
 
         {/* Logo / Avatar */}
@@ -90,10 +96,11 @@ export default function LoginForm({ slug, churchName, primaryColor, secondaryCol
             <input
               type="email" value={email} onChange={e => setEmail(e.target.value)}
               placeholder="pastor@igreja.com" required
+              className="login-input"
               style={{
                 width: '100%', padding: '13px 16px', boxSizing: 'border-box',
                 background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)',
-                borderRadius: '12px', fontSize: '15px', color: 'white', outline: 'none',
+                borderRadius: '12px', fontSize: '16px', color: 'white', outline: 'none',
               }}
               onFocus={e => e.target.style.borderColor = primaryColor}
               onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.12)'}
@@ -107,10 +114,11 @@ export default function LoginForm({ slug, churchName, primaryColor, secondaryCol
             <input
               type="password" value={password} onChange={e => setPassword(e.target.value)}
               placeholder="••••••••" required
+              className="login-input"
               style={{
                 width: '100%', padding: '13px 16px', boxSizing: 'border-box',
                 background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)',
-                borderRadius: '12px', fontSize: '15px', color: 'white', outline: 'none',
+                borderRadius: '12px', fontSize: '16px', color: 'white', outline: 'none',
               }}
               onFocus={e => e.target.style.borderColor = primaryColor}
               onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.12)'}

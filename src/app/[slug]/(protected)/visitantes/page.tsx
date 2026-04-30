@@ -23,11 +23,13 @@ export default async function VisitantesPage({ params, searchParams }: Props) {
   const visitantes = await prisma.visitor.findMany({
     where: {
       churchId: church.id,
-      ...(status && status !== 'todos' ? { status: status as any } : {}),
+      ...(status === 'responderam' ? { hasUnreadReply: true } : status && status !== 'todos' ? { status: status as any } : {}),
       ...(busca ? { name: { contains: busca } } : {}),
     },
-    orderBy: { createdAt: 'desc' },
+    orderBy: [{ hasUnreadReply: 'desc' }, { createdAt: 'desc' }],
   })
+
+  const unreadCount = await prisma.visitor.count({ where: { churchId: church.id, hasUnreadReply: true } })
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -36,6 +38,11 @@ export default async function VisitantesPage({ params, searchParams }: Props) {
           <Link href={`/${slug}/dashboard`} className="text-gray-400 hover:text-gray-600 text-sm">← Painel</Link>
           <span className="text-gray-300">/</span>
           <span className="font-semibold text-gray-900">Visitantes</span>
+          {unreadCount > 0 && (
+            <span style={{ background: '#ef4444', color: 'white', fontSize: '11px', fontWeight: '700', padding: '2px 8px', borderRadius: '20px' }}>
+              {unreadCount} respondeu
+            </span>
+          )}
         </div>
         <Link
           href={`/${slug}/visitantes/novo`}
@@ -57,6 +64,7 @@ export default async function VisitantesPage({ params, searchParams }: Props) {
             <option value="RETURNED">Retornaram</option>
             <option value="MEMBER">Viraram membros</option>
             <option value="INACTIVE">Inativos</option>
+            <option value="responderam">Responderam ↩</option>
           </select>
           <button type="submit" className="bg-gray-900 text-white text-sm px-4 py-2 rounded-lg">
             Filtrar
@@ -67,6 +75,7 @@ export default async function VisitantesPage({ params, searchParams }: Props) {
           visitors={visitantes.map(v => ({ ...v, lastVisit: v.lastVisit.toISOString(), createdAt: v.createdAt.toISOString() }))}
           slug={slug}
         />
+
       </div>
     </div>
   )

@@ -3,6 +3,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 
+const TEMP_CONFIG: Record<string, { label: string; bg: string; color: string }> = {
+  HOT:  { label: '🔥 Quente', bg: '#fff7ed', color: '#ea580c' },
+  WARM: { label: '😊 Morno',  bg: '#fefce8', color: '#ca8a04' },
+  COLD: { label: '❄️ Frio',   bg: '#eff6ff', color: '#3b82f6' },
+}
+
 interface Visitor {
   id: string
   name: string
@@ -13,6 +19,8 @@ interface Visitor {
   createdAt: string
   status: string
   wantsHomeVisit: boolean
+  hasUnreadReply: boolean
+  temperature: string
 }
 
 interface Template {
@@ -207,7 +215,7 @@ export default function VisitantesTabela({ visitors, slug }: { visitors: Visitor
                 const canSelect = v.status === 'NEW' || v.status === 'RETURNED'
                 const maxReached = selected.size >= MAX_SELECTION && !isSelected
                 return (
-                  <tr key={v.id} className={`border-b border-gray-50 hover:bg-gray-50 ${isSelected ? 'bg-green-50' : ''}`}>
+                  <tr key={v.id} className={`border-b border-gray-50 hover:bg-gray-50 ${isSelected ? 'bg-green-50' : v.hasUnreadReply ? 'bg-red-50' : ''}`}>
                     <td className="px-4 py-3">
                       {canSelect && (
                         <input
@@ -221,10 +229,20 @@ export default function VisitantesTabela({ visitors, slug }: { visitors: Visitor
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
-                        <div className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-xs font-semibold">
-                          {v.name.charAt(0)}
+                        <div style={{ position: 'relative' }}>
+                          <div className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-xs font-semibold">
+                            {v.name.charAt(0)}
+                          </div>
+                          {v.hasUnreadReply && (
+                            <div style={{ position: 'absolute', top: -2, right: -2, width: '10px', height: '10px', borderRadius: '50%', background: '#ef4444', border: '2px solid white' }} />
+                          )}
                         </div>
-                        <span className="text-sm text-gray-900">{v.name}</span>
+                        <div>
+                          <span className="text-sm text-gray-900">{v.name}</span>
+                          {v.hasUnreadReply && (
+                            <p style={{ fontSize: '11px', color: '#ef4444', fontWeight: '600', margin: 0 }}>Respondeu ↩</p>
+                          )}
+                        </div>
                         {v.wantsHomeVisit && (
                           <span className="text-xs bg-yellow-50 text-yellow-600 px-1.5 py-0.5 rounded">Quer visita</span>
                         )}
@@ -235,9 +253,16 @@ export default function VisitantesTabela({ visitors, slug }: { visitors: Visitor
                     <td className="px-4 py-3 text-sm text-gray-400">{new Date(v.lastVisit).toLocaleDateString('pt-BR')}</td>
                     <td className="px-4 py-3 text-sm text-gray-400">{v.invitedBy || '—'}</td>
                     <td className="px-4 py-3">
-                      <span className={`text-xs px-2 py-1 rounded-full ${STATUS_COLOR[v.status]}`}>
-                        {STATUS_LABEL[v.status]}
-                      </span>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <span className={`text-xs px-2 py-1 rounded-full ${STATUS_COLOR[v.status]}`}>
+                          {STATUS_LABEL[v.status]}
+                        </span>
+                        {v.temperature && TEMP_CONFIG[v.temperature] && (
+                          <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '20px', background: TEMP_CONFIG[v.temperature].bg, color: TEMP_CONFIG[v.temperature].color, fontWeight: '600' }}>
+                            {TEMP_CONFIG[v.temperature].label}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       <Link href={`/${slug}/visitantes/${v.id}`} className="text-xs text-blue-600 hover:underline">Ver</Link>

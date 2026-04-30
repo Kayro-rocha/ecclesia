@@ -2,6 +2,17 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { hasChurchAccess } from '@/lib/access'
+
+async function getMissionWithAccess(id: string, user: any) {
+  const mission = await prisma.mission.findUnique({
+    where: { id },
+    include: { church: { select: { id: true, parentChurchId: true } } },
+  })
+  if (!mission) return null
+  if (!hasChurchAccess(user, mission.church)) return null
+  return mission
+}
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions)
@@ -22,6 +33,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
 
   const { id } = await params
+  const existing = await getMissionWithAccess(id, session.user as any)
+  if (!existing) return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
   const body = await req.json()
   const { title, description, deliveryDate, items } = body
 
@@ -73,6 +86,8 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
 
   const { id } = await params
+  const existing = await getMissionWithAccess(id, session.user as any)
+  if (!existing) return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
 
   const items = await prisma.missionItem.findMany({ where: { missionId: id } })
   for (const item of items) {

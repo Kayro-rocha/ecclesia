@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
+import { useModal } from '@/lib/useModal'
 
 interface Member {
   id: string
@@ -26,6 +27,7 @@ export default function EditarEscalaPage() {
   const params = useParams()
   const slug = params?.slug as string
   const id = params?.id as string
+  const { alert: showAlert, modalNode } = useModal()
 
   const [membros, setMembros] = useState<Member[]>([])
   const [grupos, setGrupos] = useState<Group[]>([])
@@ -77,9 +79,9 @@ export default function EditarEscalaPage() {
     setNovoItem(p => ({ ...p, memberId, role: membro?.group || '' }))
   }
 
-  function adicionarItem() {
+  async function adicionarItem() {
     if (!novoItem.memberId || !novoItem.role) return
-    if (items.some(i => i.memberId === novoItem.memberId)) return alert('Membro já adicionado')
+    if (items.some(i => i.memberId === novoItem.memberId)) { await showAlert('Membro já adicionado', { title: 'Atenção' }); return }
     const membro = membros.find(m => m.id === novoItem.memberId)
     if (!membro) return
     setItems(prev => [...prev, { memberId: novoItem.memberId, memberName: membro.name, role: novoItem.role }])
@@ -92,7 +94,7 @@ export default function EditarEscalaPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (items.length === 0) return alert('Adicione pelo menos um voluntário')
+    if (items.length === 0) { await showAlert('Adicione pelo menos um voluntário', { title: 'Atenção' }); return }
     setLoading(true)
 
     const res = await fetch(`/api/schedules/${id}`, {
@@ -224,6 +226,7 @@ export default function EditarEscalaPage() {
           </div>
         </form>
       </div>
+      {modalNode}
     </div>
   )
 }

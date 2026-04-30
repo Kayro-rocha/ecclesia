@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import { useModal } from '@/lib/useModal'
 
 type Member = { id: string; name: string; group: string | null }
 
@@ -20,6 +21,7 @@ export default function NovaFrequenciaPage() {
   const params = useParams()
   const searchParams = useSearchParams()
   const slug = params?.slug as string
+  const { alert: showAlert, modalNode } = useModal()
 
   const dataParam = searchParams.get('data') || new Date().toISOString().split('T')[0]
   const tipoParam = searchParams.get('tipo') || ''
@@ -88,8 +90,8 @@ export default function NovaFrequenciaPage() {
   const grupos = Array.from(new Set(membros.map(m => m.group || 'Geral'))).sort()
 
   async function handleSave() {
-    if (!data || !tipoFinal) { alert('Selecione a data e o tipo de culto.'); return }
-    if (presentes.size === 0) { alert('Marque ao menos um membro presente.'); return }
+    if (!data || !tipoFinal) { await showAlert('Selecione a data e o tipo de culto.', { title: 'Campo obrigatório' }); return }
+    if (presentes.size === 0) { await showAlert('Marque ao menos um membro presente.', { title: 'Campo obrigatório' }); return }
     setSalvando(true)
     const res = await fetch('/api/attendance', {
       method: 'POST',
@@ -244,6 +246,7 @@ export default function NovaFrequenciaPage() {
         </div>
 
       </div>
+      {modalNode}
     </div>
   )
 }

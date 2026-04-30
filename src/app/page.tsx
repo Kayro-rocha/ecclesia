@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import {Palette, Smartphone, CreditCard, Bell, Users, Building2, Shield, BarChart3, UserCheck, Calendar, UsersRound, CalendarDays, Megaphone, Wallet, Globe, Heart, CheckCircle2, ArrowRight, Star, ChevronDown
+import React, { useState } from 'react'
+import {Palette, Smartphone, CreditCard, Bell, Users, Building2, Shield, BarChart3, UserCheck, Calendar, UsersRound, CalendarDays, Megaphone, Wallet, Globe, Heart, CheckCircle2, ArrowRight, Star, ChevronDown, Menu, X
 } from 'lucide-react'
 
 const PLAN_IGREJA = process.env.NEXT_PUBLIC_PLAN_IGREJA_URL || '#'
@@ -14,10 +14,10 @@ const C = { primary: '#1E2A78', light: '#2F4DFF', secondary: '#6C2BD9', bg: '#F8
 const diferenciais = [
   { Icon: Palette, title: 'White-label completo', desc: 'Sua logo, suas cores. O app exibe a identidade da sua igreja — não a marca de um sistema genérico.' },
   { Icon: Smartphone, title: 'App na Play Store e App Store', desc: 'Aplicativo nativo disponível para Android e iOS. Seus membros baixam diretamente nas lojas oficiais.' },
-  { Icon: CreditCard, title: 'Dízimo online integrado', desc: 'Boleto, PIX e cartão. O dinheiro cai direto na conta da sua igreja, sem intermediários.' },
+  { Icon: Wallet, title: 'Gestão financeira completa', desc: 'Dízimos, ofertas, despesas e relatórios organizados. Fluxo de caixa sempre atualizado, sem planilhas.' },
   { Icon: Bell, title: 'Notificações em tempo real', desc: 'Push notifications para eventos, escalas e comunicados — mesmo com o app fechado.' },
   { Icon: Users, title: 'Gestão de células', desc: 'Cada líder tem área própria. Registra reuniões, frequência e visitantes pelo app.' },
-  { Icon: Building2, title: 'Multi-sede (Plano Rede)', desc: 'Sede mãe e filiais ilimitadas com programações independentes e dashboard consolidado.' },
+  { Icon: Building2, title: 'Multi-sede (Plano Rede)', desc: 'Sede mãe e até 3 filiais com programações independentes e dashboard consolidado.' },
   { Icon: Shield, title: 'Acesso seguro por CPF', desc: 'Membros se identificam pelo CPF. Cada um acessa apenas seus próprios dados.' },
   { Icon: BarChart3, title: 'Relatórios automáticos', desc: 'Frequência, dízimos e escalas sempre atualizados. Sem planilhas, sem retrabalho.' },
 ]
@@ -35,13 +35,13 @@ const modulos = [
   { Icon: CreditCard, name: 'Dízimo Online', desc: 'PIX, boleto e cartão sem intermediários — dinheiro direto na conta', color: '#0F766E' },
 ]
 
-const planIgrejaFeatures = ['Todos os 10 módulos', 'App white-label próprio', 'Membros ilimitados', 'Dízimo online integrado', 'Push notifications', 'Suporte por email']
-const planRedeFeatures = ['Tudo do Plano Igreja', 'Filiais ilimitadas', 'Dashboard consolidado', 'Programações independentes', 'Gestão por sede', 'Suporte prioritário']
+const planIgrejaFeatures = ['Todos os 10 módulos', 'App white-label próprio', 'Membros ilimitados', 'Gestão financeira completa', 'Push notifications', 'Suporte por email']
+const planRedeFeatures = ['Tudo do Plano Igreja', 'Até 3 filiais', 'Dashboard consolidado', 'Programações independentes', 'Gestão por sede', 'Suporte prioritário']
 
 const faq = [
   { q: 'O app fica na Play Store e App Store?', a: 'Sim. O aplicativo da sua igreja é publicado nas lojas oficiais com o nome, logo e cores da sua igreja. Seus membros baixam normalmente como qualquer app.' },
   { q: 'O app terá a marca da minha igreja?', a: 'Sim. Você define a logo, cor primária e secundária. Tudo que o membro vê reflete a identidade visual da sua igreja, não a marca do sistema.' },
-  { q: 'Como funciona o recebimento do dízimo?', a: 'Criamos uma conta vinculada à sua igreja. Os pagamentos (PIX, boleto, cartão) caem direto na sua conta, sem passar pela Ecclesia.' },
+  { q: 'Como funciona o módulo financeiro?', a: 'Você registra dízimos, ofertas e despesas diretamente no sistema. O Ecclesia gera relatórios automáticos de fluxo de caixa, receitas e despesas por categoria — sem planilhas, sem retrabalho.' },
   { q: 'Preciso de conhecimento técnico para configurar?', a: 'Não. Após o pagamento você recebe um link para criar sua conta. Em minutos sua igreja está configurada com logo e cores personalizadas.' },
   { q: 'Qual a diferença entre Igreja e Rede?', a: 'O Plano Igreja gerencia uma única sede. O Plano Rede suporta sede mãe mais filiais ilimitadas com programações independentes e dashboard consolidado.' },
 ]
@@ -61,41 +61,86 @@ const phoneScreens = [
     color: '#6C2BD9',
     items: [
       { Icon: Bell, l: 'Notificações', sub: '3 novas este mês' },
-      { Icon: Wallet, l: 'Dízimo', sub: 'R$ 200 · PIX' },
+      { Icon: Wallet, l: 'Financeiro', sub: 'Dízimos e ofertas' },
       { Icon: Heart, l: 'Pedido de oração', sub: 'Enviado à liderança' },
     ],
   },
   {
-    label: 'Dízimo',
+    label: 'Financeiro',
     color: '#059669',
     items: [
-      { Icon: CreditCard, l: 'PIX', sub: 'Gerado em segundos' },
-      { Icon: CreditCard, l: 'Boleto', sub: 'Vencimento em 3 dias' },
-      { Icon: Shield, l: 'Seguro', sub: 'Direto para a conta da igreja' },
+      { Icon: Wallet, l: 'Dízimos', sub: 'R$ 1.200 · registrados' },
+      { Icon: BarChart3, l: 'Despesas', sub: 'R$ 380 · lançadas' },
+      { Icon: CheckCircle2, l: 'Saldo do mês', sub: 'R$ 820 · positivo' },
     ],
   },
 ]
 
 export default function LandingPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(null)
+  const [navOpen, setNavOpen] = useState(false)
 
   return (
     <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', color: C.text, background: C.bg, overflowX: 'hidden' }}>
 
       {/* ── NAV FIXED ───────────────────────────────────────────── */}
-      <nav style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 50, background: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(16px)', borderBottom: `1px solid ${C.border}` }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 32px', height: '70px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <nav style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 50, background: 'rgba(255,255,255,0.97)', backdropFilter: 'blur(16px)', borderBottom: `1px solid ${C.border}` }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px', height: '70px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <img src="/logo-ecclesia.png" alt="Ecclesia" style={{ height: '150px', objectFit: 'contain' }} />
-          <div style={{ display: 'flex', alignItems: 'center', gap: '36px' }}>
+          <div className="nav-desktop" style={{ display: 'flex', alignItems: 'center', gap: '36px' }}>
             <a href="#modulos" style={{ fontSize: '15px', color: C.muted, textDecoration: 'none', fontWeight: '500' }}>Módulos</a>
             <a href="#planos" style={{ fontSize: '15px', color: C.muted, textDecoration: 'none', fontWeight: '500' }}>Planos</a>
             <a href="#faq" style={{ fontSize: '15px', color: C.muted, textDecoration: 'none', fontWeight: '500' }}>FAQ</a>
-            <a href="mailto:suporte@marketcontroll.com" style={{ fontSize: '15px', color: C.muted, textDecoration: 'none', fontWeight: '500' }}>Suporte</a>
+            <a href="https://wa.me/5527998673933" target="_blank" rel="noopener noreferrer" style={{ fontSize: '15px', color: C.muted, textDecoration: 'none', fontWeight: '500' }}>Suporte</a>
             <a href="#planos" style={{ background: G2, color: 'white', padding: '10px 24px', borderRadius: '10px', fontSize: '14px', fontWeight: '700', textDecoration: 'none', boxShadow: `0 4px 14px ${C.secondary}40` }}>
               Assinar agora ↓
             </a>
           </div>
+          <button
+            className="nav-hamburger"
+            onClick={() => setNavOpen(o => !o)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '8px', color: C.text, display: 'none', alignItems: 'center', justifyContent: 'center' }}
+            aria-label="Menu"
+          >
+            {navOpen ? <X size={26} /> : <Menu size={26} />}
+          </button>
         </div>
+        {navOpen && (
+          <div style={{
+            background: 'rgba(255,255,255,0.99)', borderTop: `1px solid ${C.border}`,
+            padding: '12px 20px 20px', display: 'flex', flexDirection: 'column', gap: '0',
+          }}>
+            {[
+              { href: '#modulos', label: 'Módulos' },
+              { href: '#planos', label: 'Planos' },
+              { href: '#faq', label: 'FAQ' },
+            ].map(item => (
+              <a
+                key={item.label}
+                href={item.href}
+                onClick={() => setNavOpen(false)}
+                style={{ padding: '14px 4px', fontSize: '16px', color: C.text, textDecoration: 'none', fontWeight: '500', borderBottom: `1px solid ${C.border}` }}
+              >
+                {item.label}
+              </a>
+            ))}
+            <a
+              href="https://wa.me/5527998673933"
+              target="_blank" rel="noopener noreferrer"
+              onClick={() => setNavOpen(false)}
+              style={{ padding: '14px 4px', fontSize: '16px', color: C.text, textDecoration: 'none', fontWeight: '500', borderBottom: `1px solid ${C.border}` }}
+            >
+              Suporte
+            </a>
+            <a
+              href="#planos"
+              onClick={() => setNavOpen(false)}
+              style={{ marginTop: '14px', background: G2, color: 'white', padding: '14px', borderRadius: '12px', fontSize: '15px', fontWeight: '700', textDecoration: 'none', textAlign: 'center' }}
+            >
+              Assinar agora
+            </a>
+          </div>
+        )}
       </nav>
 
       {/* ── HERO ────────────────────────────────────────────────── */}
@@ -119,7 +164,7 @@ export default function LandingPage() {
           </h1>
 
           <p style={{ fontSize: 'clamp(17px, 2vw, 21px)', color: 'rgba(255,255,255,0.65)', maxWidth: '640px', margin: '0 auto 48px', lineHeight: 1.65 }}>
-            App personalizado na loja com a identidade da sua igreja, dízimo online integrado, gestão de células, escalas e muito mais. Um sistema completo, sem complicação.
+            App personalizado na loja com a identidade da sua igreja, controle financeiro completo, gestão de células, escalas e muito mais. Um sistema completo, sem complicação.
           </p>
 
           <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -156,6 +201,40 @@ export default function LandingPage() {
               <p style={{ margin: 0, fontSize: '14px', color: C.muted }}>{s.l}</p>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* ── COMO FUNCIONA ───────────────────────────────────────── */}
+      <section style={{ background: 'white', padding: '96px 32px', borderTop: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}` }}>
+        <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: '56px' }}>
+            <p style={{ margin: '0 0 12px', fontSize: '13px', fontWeight: '700', letterSpacing: '2px', textTransform: 'uppercase', background: G2, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Simples assim</p>
+            <h2 style={{ margin: '0 0 14px', fontSize: 'clamp(30px, 4vw, 48px)', fontWeight: '900', letterSpacing: '-1px' }}>Como funciona</h2>
+            <p style={{ margin: 0, fontSize: '18px', color: C.muted }}>Em menos de 24 horas sua igreja tem sistema configurado e app disponível nas lojas.</p>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '40px' }}>
+            {[
+              { step: '01', Icon: CreditCard, title: 'Escolha o plano', desc: 'Clique em Assinar, conclua o pagamento e sua conta é criada automaticamente em minutos.', color: C.light },
+              { step: '02', Icon: Palette, title: 'Configure sua igreja', desc: 'Faça login, adicione logo, cores e informações. Cadastre membros, ministérios e configure o WhatsApp.', color: C.secondary },
+              { step: '03', Icon: Smartphone, title: 'App nas lojas', desc: 'Seu app com a identidade da sua igreja fica disponível na Play Store e App Store para os membros baixarem.', color: C.primary },
+            ].map(({ step, Icon, title, desc, color }) => (
+              <div key={step} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                  <div style={{ width: '52px', height: '52px', borderRadius: '16px', background: `${color}14`, border: `1px solid ${color}25`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <Icon size={24} color={color} strokeWidth={1.9} />
+                  </div>
+                  <span style={{ fontSize: '52px', fontWeight: '900', lineHeight: 1, color: `${color}20`, userSelect: 'none' as const }}>{step}</span>
+                </div>
+                <h3 style={{ margin: 0, fontSize: '22px', fontWeight: '800', color: C.text }}>{title}</h3>
+                <p style={{ margin: 0, fontSize: '15px', color: C.muted, lineHeight: 1.7 }}>{desc}</p>
+              </div>
+            ))}
+          </div>
+          <div style={{ textAlign: 'center', marginTop: '48px' }}>
+            <a href="#planos" style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', background: G2, color: 'white', padding: '15px 28px', borderRadius: '14px', fontSize: '15px', fontWeight: '800', textDecoration: 'none', boxShadow: '0 12px 30px rgba(108,43,217,0.22)' }}>
+              Começar agora <ArrowRight size={18} />
+            </a>
+          </div>
         </div>
       </section>
 
@@ -403,8 +482,8 @@ export default function LandingPage() {
               {
                 Icon: CreditCard,
                 title: 'Dízimo online integrado',
-                desc: 'Receba por PIX, boleto e cartão com repasse direto para a conta da igreja.',
-                badge: 'Sem intermediários',
+                desc: 'Registre dízimos, ofertas e despesas. Relatórios automáticos e fluxo de caixa sempre atualizado.',
+                badge: 'Mais controle',
               },
               {
                 Icon: Bell,
@@ -565,7 +644,7 @@ export default function LandingPage() {
               'Identidade visual 100% da sua igreja',
               'Acesso simples por CPF',
               'Escalas, comunicados e eventos',
-              'Dízimo com PIX, boleto e cartão',
+              'Controle de dízimos, ofertas e despesas',
               'Pedidos de oração para a liderança',
             ].map(item => (
               <div key={item} style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
@@ -576,7 +655,7 @@ export default function LandingPage() {
           </div>
 
           {/* 3 phone mockups */}
-          <div style={{ position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'flex-end', gap: '12px', paddingBottom: '20px' }}>
+          <div className="phones-wrap" style={{ position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'flex-end', gap: '12px', paddingBottom: '20px' }}>
             {phoneScreens.map((screen, i) => {
               const isCenter = i === 1
               return (
@@ -738,9 +817,10 @@ export default function LandingPage() {
               {
                 Icon: Wallet,
                 title: 'Financeiro',
-                desc: 'Dízimos, ofertas, despesas e relatórios organizados para uma gestão mais segura.',
+                desc: 'Controle total das finanças da sua igreja — dízimos, ofertas, despesas e relatórios em um só lugar.',
                 badge: 'Mais controle',
                 highlight: true,
+                features: ['Dízimos e ofertas', 'Despesas categorizadas', 'Relatórios automáticos', 'Fluxo de caixa'],
               },
               {
                 Icon: Smartphone,
@@ -749,7 +829,7 @@ export default function LandingPage() {
                 badge: 'Mais valor percebido',
                 highlight: true,
               },
-            ].map(({ Icon, title, desc, badge, highlight }) => (
+            ].map(({ Icon, title, desc, badge, highlight, features }: { Icon: React.ElementType, title: string, desc: string, badge: string, highlight: boolean, features?: string[] }) => (
               <div
                 key={title}
                 className={`module-card module-card-top ${highlight ? 'module-card-highlight' : ''}`}
@@ -812,7 +892,7 @@ export default function LandingPage() {
 
                 <p
                   style={{
-                    margin: 0,
+                    margin: features ? '0 0 20px' : '0',
                     fontSize: '15px',
                     lineHeight: 1.75,
                     color: C.muted,
@@ -820,6 +900,17 @@ export default function LandingPage() {
                 >
                   {desc}
                 </p>
+
+                {features && (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                    {features.map(f => (
+                      <div key={f} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: `${C.secondary}08`, border: `1px solid ${C.border}`, borderRadius: '10px', padding: '9px 12px' }}>
+                        <CheckCircle2 size={14} color={C.secondary} strokeWidth={2.2} />
+                        <span style={{ fontSize: '13px', fontWeight: '600', color: C.text }}>{f}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -876,9 +967,9 @@ export default function LandingPage() {
                 bg: 'rgba(219,39,119,0.08)',
               },
               {
-                Icon: CreditCard,
-                title: 'Dízimo Online',
-                desc: 'PIX, boleto e cartão com repasse direto para a conta da igreja.',
+                Icon: Wallet,
+                title: 'Dízimos & Ofertas',
+                desc: 'Registre entradas, categorize receitas e acompanhe o histórico financeiro da igreja.',
                 color: '#0F766E',
                 bg: 'rgba(15,118,110,0.08)',
               },
@@ -1006,7 +1097,7 @@ export default function LandingPage() {
               <div style={{ position: 'absolute', bottom: '-40px', left: '-40px', width: '160px', height: '160px', borderRadius: '50%', background: `${C.secondary}30`, filter: 'blur(60px)', pointerEvents: 'none' }} />
               <div style={{ position: 'absolute', top: '20px', right: '20px', background: G2, borderRadius: '20px', padding: '5px 14px', fontSize: '12px', color: 'white', fontWeight: '700', letterSpacing: '0.5px' }}>RECOMENDADO</div>
               <p style={{ margin: '0 0 6px', fontWeight: '800', fontSize: '22px', color: 'white', position: 'relative', zIndex: 1 }}>Rede</p>
-              <p style={{ margin: '0 0 24px', fontSize: '15px', color: 'rgba(255,255,255,0.55)', position: 'relative', zIndex: 1 }}>Sede mãe + filiais ilimitadas</p>
+              <p style={{ margin: '0 0 24px', fontSize: '15px', color: 'rgba(255,255,255,0.55)', position: 'relative', zIndex: 1 }}>Sede mãe + até 3 filiais</p>
               <div style={{ marginBottom: '28px', position: 'relative', zIndex: 1 }}>
                 <span style={{ fontSize: '48px', fontWeight: '900', color: 'white' }}>R$ 199,90</span>
                 <span style={{ fontSize: '15px', color: 'rgba(255,255,255,0.55)' }}>/mês</span>
@@ -1094,14 +1185,39 @@ export default function LandingPage() {
             <p style={{ margin: 0, fontSize: '13px', color: 'rgba(255,255,255,0.35)' }}>Sistema de gestão para igrejas evangélicas</p>
           </div>
           <div style={{ display: 'flex', gap: '28px', flexWrap: 'wrap' }}>
-            {['#modulos:Módulos', '#planos:Planos', '#faq:FAQ', 'mailto:suporte@marketcontroll.com:Suporte'].map(item => {
+            {['#modulos:Módulos', '#planos:Planos', '#faq:FAQ'].map(item => {
               const [href, label] = item.split(':')
               return <a key={label} href={href} style={{ color: 'rgba(255,255,255,0.4)', textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>{label}</a>
             })}
+            <a href="https://wa.me/5527998673933" target="_blank" rel="noopener noreferrer" style={{ color: 'rgba(255,255,255,0.4)', textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>Suporte</a>
           </div>
-          <p style={{ margin: 0, fontSize: '13px', color: 'rgba(255,255,255,0.25)' }}>© {new Date().getFullYear()} Ecclesia</p>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
+            <p style={{ margin: 0, fontSize: '13px', color: 'rgba(255,255,255,0.25)' }}>© {new Date().getFullYear()} Ecclesia</p>
+            <div style={{ display: 'flex', gap: '16px' }}>
+              <a href="/termos" style={{ color: 'rgba(255,255,255,0.3)', textDecoration: 'none', fontSize: '12px' }}>Termos de Uso</a>
+              <a href="/privacidade" style={{ color: 'rgba(255,255,255,0.3)', textDecoration: 'none', fontSize: '12px' }}>Política de Privacidade</a>
+            </div>
+          </div>
         </div>
       </footer>
+
+      {/* ── BOTÃO FLUTUANTE WHATSAPP ────────────────────────────── */}
+      <a
+        href="https://wa.me/5527998673933?text=Ol%C3%A1%2C%20gostaria%20de%20saber%20mais%20sobre%20o%20Ecclesia!"
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{
+          position: 'fixed', bottom: '28px', right: '28px', zIndex: 999,
+          width: '56px', height: '56px', borderRadius: '50%',
+          background: '#25D366', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          boxShadow: '0 4px 20px rgba(37,211,102,0.5)', textDecoration: 'none',
+        }}
+        title="Falar no WhatsApp"
+      >
+        <svg viewBox="0 0 24 24" width="28" height="28" fill="white">
+          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+        </svg>
+      </a>
 
       <style jsx>{`
         .feature-card {
@@ -1225,6 +1341,23 @@ export default function LandingPage() {
         .module-card:hover .module-icon-pop {
           transform: scale(1.08) rotate(-3deg);
           box-shadow: 0 10px 24px rgba(108, 43, 217, 0.14);
+        }
+
+        /* ── MOBILE ── */
+        @media (max-width: 768px) {
+          .nav-desktop { display: none !important; }
+          .nav-hamburger { display: flex !important; }
+        }
+
+        @media (max-width: 600px) {
+          .phones-wrap {
+            transform: scale(0.72);
+            transform-origin: top center;
+            margin-bottom: -80px;
+          }
+          .feature-card-lg {
+            grid-template-columns: 1fr !important;
+          }
         }
       `}</style>
     </div>

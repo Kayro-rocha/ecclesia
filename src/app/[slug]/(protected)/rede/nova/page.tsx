@@ -22,6 +22,8 @@ interface CreatedFilial {
   password: string
 }
 
+const APP_DOMAIN = process.env.NEXT_PUBLIC_APP_DOMAIN || 'ecclesiaa.com'
+
 export default function NovaFilialPage() {
   const params = useParams()
   const slug = params.slug as string
@@ -74,7 +76,7 @@ export default function NovaFilialPage() {
 
   // Modal de sucesso
   if (created) {
-    const url = `${created.slug}.ecclesia.app`
+    const url = `${created.slug}.${APP_DOMAIN}`
     return (
       <div className="page-content" style={{ maxWidth: '520px' }}>
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
@@ -171,12 +173,12 @@ export default function NovaFilialPage() {
                 style={{ border: 'none !important', borderRadius: '0 !important', flex: 1, boxShadow: 'none !important' }}
               />
               <span style={{ padding: '10px 12px', background: '#f8f9fb', color: '#a0aec0', fontSize: '13px', whiteSpace: 'nowrap', borderLeft: '1.5px solid #e2e8f0', flexShrink: 0 }}>
-                .ecclesia.app
+                .{APP_DOMAIN}
               </span>
             </div>
             {form.slug && (
               <p style={{ fontSize: '12px', color: '#a0aec0', margin: '4px 0 0' }}>
-                Acesso: <strong>{form.slug}.ecclesia.app</strong>
+                Acesso: <strong>{form.slug}.{APP_DOMAIN}</strong>
               </p>
             )}
           </div>

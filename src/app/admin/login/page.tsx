@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { signIn } from 'next-auth/react'
+import { ShieldCheck } from 'lucide-react'
 
 export default function AdminLoginPage() {
   const [form, setForm] = useState({ email: '', password: '' })
@@ -31,9 +32,11 @@ export default function AdminLoginPage() {
     <div style={{ minHeight: '100vh', background: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
       <div style={{ width: '100%', maxWidth: '380px' }}>
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-          <div style={{ fontSize: '32px', marginBottom: '8px' }}>⚙️</div>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px' }}>
+            <ShieldCheck size={40} color="#3b82f6" />
+          </div>
           <h1 style={{ fontSize: '22px', fontWeight: '700', color: 'white', margin: '0 0 4px' }}>Admin</h1>
-          <p style={{ fontSize: '14px', color: '#64748b', margin: 0 }}>MarketControll · Painel interno</p>
+          <p style={{ fontSize: '14px', color: '#64748b', margin: 0 }}>Ecclesia · Painel interno</p>
         </div>
 
         <form onSubmit={handleSubmit} style={{ background: '#1e293b', borderRadius: '12px', padding: '28px', display: 'flex', flexDirection: 'column', gap: '16px' }}>

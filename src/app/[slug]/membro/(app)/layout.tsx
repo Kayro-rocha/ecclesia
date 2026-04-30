@@ -27,11 +27,12 @@ export default async function MembroAppLayout({ children, params }: Props) {
 
   if (!member) redirect(`/${slug}/membro/login`)
 
-  const leaderCell = await prisma.cell.findFirst({
-    where: { leaderId: session.memberId, active: true },
-    select: { id: true },
-  })
+  const [leaderCell, memberCell] = await Promise.all([
+    prisma.cell.findFirst({ where: { leaderId: session.memberId, active: true }, select: { id: true } }),
+    prisma.cellMember.findFirst({ where: { memberId: session.memberId, cell: { active: true } }, select: { id: true } }),
+  ])
   const isLeader = !!leaderCell
+  const inCell = isLeader || !!memberCell
 
   const firstName = member.name.split(' ')[0]
   const churchColor = member.church?.primaryColor || '#3b82f6'
@@ -50,22 +51,12 @@ export default async function MembroAppLayout({ children, params }: Props) {
     ...(member.group ? [{ targetGroup: member.group }] : []),
   ]
 
-  // Timestamps mais recentes para badges de não-lido
-  const [latestComunicado, latestEscala] = await Promise.all([
-    prisma.announcement.findFirst({
-      where: { churchId: session.churchId, OR: groupFilter },
-      orderBy: { createdAt: 'desc' },
-      select: { createdAt: true },
-    }),
-    prisma.schedule.findFirst({
-      where: { churchId: session.churchId, items: { some: { memberId: session.memberId } } },
-      orderBy: { createdAt: 'desc' },
-      select: { createdAt: true },
-    }),
-  ])
-
+  const latestComunicado = await prisma.announcement.findFirst({
+    where: { churchId: session.churchId, OR: groupFilter },
+    orderBy: { createdAt: 'desc' },
+    select: { createdAt: true },
+  })
   const latestComunicadoAt = latestComunicado?.createdAt.toISOString() ?? null
-  const latestEscalaAt = latestEscala?.createdAt.toISOString() ?? null
 
   return (
     <div style={{ minHeight: '100dvh', background: '#f8fafc', paddingBottom: '62px' }}>
@@ -143,7 +134,7 @@ export default async function MembroAppLayout({ children, params }: Props) {
         {children}
       </main>
 
-      <MembroBottomNav slug={slug} latestComunicadoAt={latestComunicadoAt} latestEscalaAt={latestEscalaAt} isLeader={isLeader} />
+      <MembroBottomNav slug={slug} latestComunicadoAt={latestComunicadoAt} inCell={inCell} />
       <SessionGuard />
     </div>
   )

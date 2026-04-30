@@ -11,9 +11,11 @@
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",
     "@prisma/client": "^5.22.0",
+    "@sentry/nextjs": "^10.51.0",
     "@types/web-push": "^3.6.4",
     "axios": "^1.15.0",
     "bcryptjs": "^3.0.3",
+    "firebase-admin": "^13.8.0",
     "git-filter-repo": "^0.0.30",
     "lucide-react": "^1.8.0",
     "mysql2": "^3.20.0",

@@ -34,12 +34,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Este CPF/CNPJ já está cadastrado.' }, { status: 409 })
     }
 
-    // Cria a igreja no banco
+    // Busca o plano do token antes de criar a igreja
+    let plan: 'IGREJA' | 'REDE' = 'IGREJA'
+    if (body.token) {
+      const tokenRecord = await prisma.onboardingToken.findFirst({
+        where: { token: body.token, usedAt: null },
+        select: { plan: true },
+      })
+      if (tokenRecord?.plan) plan = tokenRecord.plan as 'IGREJA' | 'REDE'
+    }
+
+    // Cria a igreja no banco com o plano correto
     const church = await prisma.church.create({
       data: {
         name: churchName,
         slug,
         cpfCnpj: cpfClean,
+        plan,
       },
     })
 

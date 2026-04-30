@@ -27,6 +27,11 @@ export async function GET(_req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
   }
 
+  // Limpa flag de resposta não lida ao abrir o perfil
+  if (visitor.hasUnreadReply) {
+    await prisma.visitor.update({ where: { id }, data: { hasUnreadReply: false } })
+  }
+
   return NextResponse.json(visitor)
 }
 
@@ -46,7 +51,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
   }
 
-  const { name, phone, invitedBy, howFound, wantsHomeVisit, status, registerVisit } = body
+  const { name, phone, invitedBy, howFound, wantsHomeVisit, status, flowActive, notes, registerVisit } = body
 
   const visitor = await prisma.visitor.update({
     where: { id },
@@ -57,6 +62,8 @@ export async function PUT(req: NextRequest, { params }: Params) {
       ...(howFound !== undefined && { howFound: howFound || null }),
       ...(wantsHomeVisit !== undefined && { wantsHomeVisit }),
       ...(status !== undefined && { status }),
+      ...(flowActive !== undefined && { flowActive }),
+      ...(notes !== undefined && { notes: notes || null }),
       ...(registerVisit && {
         visits: { increment: 1 },
         lastVisit: new Date(),
@@ -66,4 +73,25 @@ export async function PUT(req: NextRequest, { params }: Params) {
   })
 
   return NextResponse.json(visitor)
+}
+
+export async function DELETE(_req: NextRequest, { params }: Params) {
+  const session = await getServerSession(authOptions)
+  if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+
+  const { id } = await params
+
+  const existing = await prisma.visitor.findUnique({ where: { id }, select: { churchId: true } })
+  if (!existing) return NextResponse.json({ error: 'Não encontrado' }, { status: 404 })
+
+  const user = session.user as any
+  const church = await prisma.church.findUnique({ where: { id: existing.churchId }, select: { id: true, parentChurchId: true } })
+  if (!church || !hasChurchAccess(user, church)) {
+    return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
+  }
+
+  await prisma.visitorContact.deleteMany({ where: { visitorId: id } })
+  await prisma.visitor.delete({ where: { id } })
+
+  return NextResponse.json({ ok: true })
 }

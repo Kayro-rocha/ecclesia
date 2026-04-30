@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { useModal } from '@/lib/useModal'
 
 type Group = { id: string; name: string }
 
@@ -13,6 +14,7 @@ interface Props {
 
 export default function NovoComunicadoForm({ slug, churchName }: Props) {
   const router = useRouter()
+  const { confirm, modalNode } = useModal()
   const fileRef = useRef<HTMLInputElement>(null)
 
   const [loading, setLoading] = useState(false)
@@ -43,7 +45,7 @@ export default function NovoComunicadoForm({ slug, churchName }: Props) {
   async function salvar(enviar: boolean) {
     if (enviar) {
       const alvo = form.targetGroup ? `o grupo "${form.targetGroup}"` : 'todos os membros'
-      const confirmado = confirm(`⚠️ Enviar notificação para ${alvo}?\n\nApós o envio não será possível editar.`)
+      const confirmado = await confirm(`Enviar notificação para ${alvo}?`, { title: 'Confirmar envio', confirmText: 'Enviar', variant: 'warning' })
       if (!confirmado) return
       setEnviando(true)
     } else setLoading(true)
@@ -181,6 +183,7 @@ export default function NovoComunicadoForm({ slug, churchName }: Props) {
           </p>
         </div>
       </div>
+      {modalNode}
     </div>
   )
 }

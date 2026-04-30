@@ -24,7 +24,7 @@ export default async function EventosPage({ params }: Props) {
     orderBy: { date: 'desc' },
   })
 
-  const appDomain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'marketcontroll.com'
+  const appDomain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'ecclesiaa.com'
 
   return (
     <div>

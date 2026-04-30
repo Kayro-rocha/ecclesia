@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { useModal } from '@/lib/useModal'
 
 type Attendee = {
   id: string; name: string; phone: string | null
@@ -20,6 +21,7 @@ export default function EventoPage() {
   const router = useRouter()
   const slug = params?.slug as string
   const id = params?.id as string
+  const { confirm, modalNode } = useModal()
 
   const [event, setEvent] = useState<Event | null>(null)
   const [loading, setLoading] = useState(true)
@@ -29,7 +31,7 @@ export default function EventoPage() {
 
   const appDomain = typeof window !== 'undefined'
     ? window.location.hostname.split('.').slice(1).join('.')
-    : 'marketcontroll.com'
+    : 'ecclesiaa.com'
   const eventLink = typeof window !== 'undefined'
     ? `${window.location.protocol}//${slug}.${appDomain}/evento/${id}`
     : ''
@@ -66,7 +68,7 @@ export default function EventoPage() {
   }
 
   async function handleDelete() {
-    if (!confirm(`Apagar o evento "${event?.title}"? Isso remove todas as confirmações.`)) return
+    if (!await confirm(`Apagar o evento "${event?.title}"?`, { title: 'Apagar evento', confirmText: 'Apagar', variant: 'danger' })) return
     await fetch(`/api/events/${id}`, { method: 'DELETE' })
     router.push(`/${slug}/eventos`)
   }
@@ -78,7 +80,7 @@ export default function EventoPage() {
   }
 
   async function handleNotify() {
-    if (!confirm('Enviar notificação push para todos os membros que aceitaram receber alertas?')) return
+    if (!await confirm('Enviar notificação push para todos os membros que aceitaram receber alertas?', { title: 'Enviar notificação', confirmText: 'Enviar' })) return
     setNotifying(true)
     setNotifyResult(null)
     const res = await fetch('/api/push/send', {
@@ -264,6 +266,7 @@ export default function EventoPage() {
 
         </div>
       </div>
+      {modalNode}
     </div>
   )
 }

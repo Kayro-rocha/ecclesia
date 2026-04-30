@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
+import { useModal } from '@/lib/useModal'
 
 interface Beneficiary {
   id: string
@@ -20,6 +21,7 @@ export default function BeneficiarioPage() {
   const params = useParams()
   const slug = params?.slug as string
   const id = params?.id as string
+  const { confirm, modalNode } = useModal()
 
   const [loading, setLoading] = useState(true)
   const [salvando, setSalvando] = useState(false)
@@ -70,7 +72,7 @@ export default function BeneficiarioPage() {
   }
 
   async function handleDelete() {
-    if (!confirm(`Apagar beneficiário "${beneficiario?.name}"?\n\nEsta ação não pode ser desfeita.`)) return
+    if (!await confirm(`Apagar beneficiário "${beneficiario?.name}"?`, { title: 'Apagar beneficiário', confirmText: 'Apagar', variant: 'danger' })) return
     const res = await fetch(`/api/missions/beneficiaries/${id}`, { method: 'DELETE' })
     if (res.ok) router.push(`/${slug}/missoes`)
   }
@@ -212,6 +214,7 @@ export default function BeneficiarioPage() {
           </>
         )}
       </div>
+      {modalNode}
     </div>
   )
 }

@@ -43,6 +43,7 @@ export default function MembroEscalasPage() {
   const [atualizando, setAtualizando] = useState<string | null>(null)
   const [detalhe, setDetalhe] = useState<Detalhe | null>(null)
   const [loadingDetalhe, setLoadingDetalhe] = useState(false)
+  const [alterandoId, setAlterandoId] = useState<string | null>(null)
 
   async function load() {
     const res = await fetch('/api/membro/escalas')
@@ -69,6 +70,7 @@ export default function MembroEscalasPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status }),
     })
+    setAlterandoId(null)
     await load()
     if (detalhe) {
       const res = await fetch(`/api/membro/escalas/${itemId}`)
@@ -108,7 +110,10 @@ export default function MembroEscalasPage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   {proximas.map(item => (
                     <EscalaCard key={item.id} item={item} atualizando={atualizando === item.id}
-                      onResponder={responder} isPast={false} onDetalhes={abrirDetalhe} />
+                      onResponder={responder} isPast={false} onDetalhes={abrirDetalhe}
+                      mostraAlterar={alterandoId === item.id}
+                      onAlterar={() => setAlterandoId(item.id)}
+                      onCancelarAlterar={() => setAlterandoId(null)} />
                   ))}
                 </div>
               </section>
@@ -219,11 +224,23 @@ export default function MembroEscalasPage() {
                         </div>
                       )}
                       {me.status !== 'PENDING' && new Date(detalhe.schedule.date) >= new Date() && (
-                        <button
-                          onClick={() => responder(detalhe.myItemId, 'PENDING' as any)}
-                          disabled={!!atualizando}
-                          style={{ marginTop: '10px', background: 'none', border: 'none', color: '#94a3b8', fontSize: '12px', cursor: 'pointer', padding: 0 }}
-                        >Alterar resposta</button>
+                        alterandoId === detalhe.myItemId ? (
+                          <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                            <button onClick={() => responder(detalhe.myItemId, 'DECLINED')} disabled={!!atualizando}
+                              style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '10px', borderRadius: '10px', border: '1.5px solid #fecaca', background: 'white', color: '#dc2626', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
+                              <X size={14} /> Recusar
+                            </button>
+                            <button onClick={() => responder(detalhe.myItemId, 'CONFIRMED')} disabled={!!atualizando}
+                              style={{ flex: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '10px', borderRadius: '10px', border: 'none', background: '#22c55e', color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
+                              <Check size={14} /> {atualizando ? 'Salvando...' : 'Confirmar'}
+                            </button>
+                          </div>
+                        ) : (
+                          <button onClick={() => setAlterandoId(detalhe.myItemId)}
+                            style={{ marginTop: '10px', background: 'none', border: 'none', color: '#3b82f6', fontSize: '12px', cursor: 'pointer', padding: 0, fontWeight: '600' }}>
+                            Alterar resposta
+                          </button>
+                        )
                       )}
                     </div>
                   ) : null
@@ -292,12 +309,15 @@ export default function MembroEscalasPage() {
   )
 }
 
-function EscalaCard({ item, atualizando, onResponder, isPast, onDetalhes }: {
+function EscalaCard({ item, atualizando, onResponder, isPast, onDetalhes, mostraAlterar, onAlterar, onCancelarAlterar }: {
   item: ScheduleItem
   atualizando: boolean
   onResponder: (id: string, s: 'CONFIRMED' | 'DECLINED') => void
   isPast: boolean
   onDetalhes: (id: string) => void
+  mostraAlterar?: boolean
+  onAlterar?: () => void
+  onCancelarAlterar?: () => void
 }) {
   const s = STATUS[item.status as StatusKey] || STATUS.PENDING
   const date = new Date(item.schedule.date)
@@ -372,11 +392,23 @@ function EscalaCard({ item, atualizando, onResponder, isPast, onDetalhes }: {
       )}
       {!isPast && item.status !== 'PENDING' && (
         <div style={{ padding: '0 16px 12px' }}>
-          <button
-            onClick={() => onResponder(item.id, 'PENDING' as any)}
-            disabled={atualizando}
-            style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '12px', cursor: 'pointer', padding: 0 }}
-          >Alterar resposta</button>
+          {mostraAlterar ? (
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button onClick={() => onResponder(item.id, 'DECLINED')} disabled={atualizando}
+                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '10px', borderRadius: '10px', border: '1.5px solid #fecaca', background: 'white', color: '#dc2626', fontSize: '13px', fontWeight: '600', cursor: 'pointer', opacity: atualizando ? 0.6 : 1 }}>
+                <X size={14} /> Recusar
+              </button>
+              <button onClick={() => onResponder(item.id, 'CONFIRMED')} disabled={atualizando}
+                style={{ flex: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '10px', borderRadius: '10px', border: 'none', background: '#22c55e', color: 'white', fontSize: '13px', fontWeight: '600', cursor: 'pointer', opacity: atualizando ? 0.6 : 1 }}>
+                <Check size={14} /> {atualizando ? 'Salvando...' : 'Confirmar'}
+              </button>
+            </div>
+          ) : (
+            <button onClick={onAlterar}
+              style={{ background: 'none', border: 'none', color: '#3b82f6', fontSize: '12px', cursor: 'pointer', padding: 0, fontWeight: '600' }}>
+              Alterar resposta
+            </button>
+          )}
         </div>
       )}
     </div>

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
+import { useModal } from '@/lib/useModal'
 
 interface Item {
   name: string
@@ -13,6 +14,7 @@ export default function NovaMissaoPage() {
   const router = useRouter()
   const params = useParams()
   const slug = params?.slug as string
+  const { alert: showAlert, modalNode } = useModal()
 
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({ title: '', description: '', deliveryDate: '' })
@@ -27,7 +29,7 @@ export default function NovaMissaoPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (items.length === 0) return alert('Adicione pelo menos um item')
+    if (items.length === 0) { await showAlert('Adicione pelo menos um item', { title: 'Atenção' }); return }
     setLoading(true)
 
     const res = await fetch(`/api/missions`, {
@@ -115,6 +117,7 @@ export default function NovaMissaoPage() {
           </div>
         </form>
       </div>
+      {modalNode}
     </div>
   )
 }

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useModal } from '@/lib/useModal'
 
 interface PrayerRequest {
   id: string
@@ -15,6 +16,7 @@ interface Props {
 }
 
 export default function OracoesClient({ initial }: Props) {
+  const { alert: showAlert, modalNode } = useModal()
   const [pedidos, setPedidos] = useState(initial)
   const [filtro, setFiltro] = useState<'TODOS' | 'PENDING' | 'PRAYED'>('TODOS')
   const [carregando, setCarregando] = useState<string | null>(null)
@@ -31,7 +33,7 @@ export default function OracoesClient({ initial }: Props) {
       if (!res.ok) throw new Error()
       setPedidos(p => p.map(r => r.id === id ? { ...r, status: novoStatus } : r))
     } catch {
-      alert('Erro ao atualizar. Tente novamente.')
+      await showAlert('Erro ao atualizar. Tente novamente.', { title: 'Erro', variant: 'danger' })
     } finally {
       setCarregando(null)
     }
@@ -164,6 +166,7 @@ export default function OracoesClient({ initial }: Props) {
           ))}
         </div>
       )}
+      {modalNode}
     </>
   )
 }

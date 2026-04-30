@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useModal } from '@/lib/useModal'
 
 const MESES = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -15,11 +16,12 @@ interface Props {
 }
 
 export default function ReenviarTodosPendentes({ slug, month, year, pendingCount }: Props) {
+  const { confirm, modalNode } = useModal()
   const [state, setState] = useState<'idle' | 'loading' | 'done'>('idle')
   const [result, setResult] = useState<{ sent: number; total: number } | null>(null)
 
   async function handleClick() {
-    if (!confirm(`Enviar notificação push para os ${pendingCount} membros com dízimo pendente de ${MESES[month - 1]}?`)) return
+    if (!await confirm(`Enviar notificação push para os ${pendingCount} membros com dízimo pendente de ${MESES[month - 1]}?`, { title: 'Enviar notificação', confirmText: 'Enviar' })) return
     setState('loading')
     try {
       const res = await fetch('/api/tithes/bulk-remind', {
@@ -36,37 +38,38 @@ export default function ReenviarTodosPendentes({ slug, month, year, pendingCount
     }
   }
 
-  if (state === 'done' && result !== null) {
-    return (
-      <span style={{
-        fontSize: '13px', color: '#276749',
-        background: '#f0fff4', padding: '8px 14px',
-        borderRadius: '8px', fontWeight: '500',
-      }}>
-        ✓ {result.sent} de {result.total} notificações enviadas
-      </span>
-    )
-  }
-
   return (
-    <button
-      onClick={handleClick}
-      disabled={state === 'loading'}
-      style={{
-        background: '#fffaf0',
-        color: '#744210',
-        border: '1.5px solid #fbd38d',
-        borderRadius: '8px',
-        padding: '8px 14px',
-        fontSize: '13px',
-        fontWeight: '500',
-        cursor: state === 'loading' ? 'default' : 'pointer',
-        transition: 'all 0.2s',
-      }}
-    >
-      {state === 'loading'
-        ? 'Enviando...'
-        : `📲 Notificar ${pendingCount} pendente${pendingCount !== 1 ? 's' : ''}`}
-    </button>
+    <>
+      {state === 'done' && result !== null ? (
+        <span style={{
+          fontSize: '13px', color: '#276749',
+          background: '#f0fff4', padding: '8px 14px',
+          borderRadius: '8px', fontWeight: '500',
+        }}>
+          ✓ {result.sent} de {result.total} notificações enviadas
+        </span>
+      ) : (
+        <button
+          onClick={handleClick}
+          disabled={state === 'loading'}
+          style={{
+            background: '#fffaf0',
+            color: '#744210',
+            border: '1.5px solid #fbd38d',
+            borderRadius: '8px',
+            padding: '8px 14px',
+            fontSize: '13px',
+            fontWeight: '500',
+            cursor: state === 'loading' ? 'default' : 'pointer',
+            transition: 'all 0.2s',
+          }}
+        >
+          {state === 'loading'
+            ? 'Enviando...'
+            : `📲 Notificar ${pendingCount} pendente${pendingCount !== 1 ? 's' : ''}`}
+        </button>
+      )}
+      {modalNode}
+    </>
   )
 }

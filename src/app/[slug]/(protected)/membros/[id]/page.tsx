@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { isValidCpfCnpj } from '@/lib/cpf'
+import { useModal } from '@/lib/useModal'
 
 
 
@@ -12,15 +13,16 @@ export default function EditarMembroPage() {
   const params = useParams()
   const slug = params?.slug as string
   const id = params?.id as string
+  const { confirm, alert: showAlert, modalNode } = useModal()
 
   async function handleResetSenha() {
-    if (!confirm(`Resetar a senha de ${form.name || 'este membro'}?\n\nNa próxima vez que acessar o app, ele precisará criar uma nova senha.`)) return
+    if (!await confirm(`Resetar a senha de ${form.name || 'este membro'}?`, { title: 'Resetar senha', confirmText: 'Resetar' })) return
     await fetch(`/api/members/${id}/reset-password`, { method: 'POST' })
-    alert('Senha resetada. O membro poderá criar uma nova senha no próximo acesso.')
+    await showAlert('Senha resetada. O membro poderá criar uma nova senha no próximo acesso.', { title: 'Senha resetada' })
   }
 
   async function handleDelete() {
-    if (!confirm(`Apagar ${form.name || 'este membro'}?\n\nIsso removerá também o histórico de dízimos e escalas. Esta ação não pode ser desfeita.`)) return
+    if (!await confirm(`Apagar ${form.name || 'este membro'}?`, { title: 'Apagar membro', confirmText: 'Apagar', variant: 'danger' })) return
     const res = await fetch(`/api/members/${id}`, { method: 'DELETE' })
     if (res.ok) router.push(`/${slug}/membros`)
   }
@@ -208,6 +210,7 @@ export default function EditarMembroPage() {
           </div>
         </form>
       </div>
+      {modalNode}
     </div>
   )
 }

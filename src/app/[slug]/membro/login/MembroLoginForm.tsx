@@ -72,6 +72,9 @@ export default function MembroLoginForm({ slug, churchName, primaryColor, second
     const data = await res.json()
     setLoading(false)
     if (!res.ok) { setErro(data.error || 'Senha incorreta'); return }
+    if (data.memberId && typeof window !== 'undefined' && (window as any).EcclesiaApp?.setMemberContext) {
+      (window as any).EcclesiaApp.setMemberContext(data.memberId, slug)
+    }
     router.push(`/${slug}/membro/home`)
   }
 

@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
 
   const token = await signMembroToken({ memberId: member.id, churchId: church.id, slug })
 
-  const res = NextResponse.json({ ok: true, name: member.name })
+  const res = NextResponse.json({ ok: true, name: member.name, memberId: member.id })
   res.cookies.set(MEMBRO_COOKIE, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',

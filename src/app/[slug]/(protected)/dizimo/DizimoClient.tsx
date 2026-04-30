@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
+import { useModal } from '@/lib/useModal'
 
 const MONTHS = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -30,6 +31,7 @@ interface Props {
 }
 
 export default function DizimoClient({ slug, initialMonth, initialYear }: Props) {
+  const { confirm, modalNode } = useModal()
   const [month, setMonth] = useState(initialMonth)
   const [year, setYear] = useState(initialYear)
   const [rows, setRows] = useState<TitherRow[]>([])
@@ -148,7 +150,7 @@ export default function DizimoClient({ slug, initialMonth, initialYear }: Props)
   }
 
   const deleteTemplate = async (id: string) => {
-    if (!confirm('Excluir este template?')) return
+    if (!await confirm('Excluir este template?', { title: 'Excluir template', confirmText: 'Excluir', variant: 'danger' })) return
     await fetch(`/api/tithes/templates/${id}?slug=${slug}`, { method: 'DELETE' })
     fetchData()
   }
@@ -414,6 +416,7 @@ export default function DizimoClient({ slug, initialMonth, initialYear }: Props)
           </div>
         </Modal>
       )}
+      {modalNode}
     </div>
   )
 }

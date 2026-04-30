@@ -134,7 +134,7 @@ export default function EcclesiaLoginForm() {
         </div>
 
         <p style={{ textAlign: 'center', marginTop: '24px', fontSize: '11px', color: 'rgba(255,255,255,0.18)', letterSpacing: '0.5px' }}>
-          ecclesia.app
+          ecclesiaa.com
         </p>
       </div>
     </div>

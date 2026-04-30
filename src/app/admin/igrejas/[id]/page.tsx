@@ -3,10 +3,13 @@
 import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
+import { AlertTriangle } from 'lucide-react'
+import { useModal } from '@/lib/useModal'
 
 interface Church {
   id: string; name: string; slug: string; plan: string; active: boolean
   createdAt: string; pixKey: string | null; whatsappInstance: string | null
+  users: { id: string; name: string; email: string }[]
   _count: {
     members: number; tithes: number; events: number; schedules: number
     announcements: number; visitors: number; missions: number; pushSubscriptions: number
@@ -19,6 +22,7 @@ export default function AdminIgrejaDetailPage() {
   const router = useRouter()
   const params = useParams()
   const id = params.id as string
+  const { confirm, modalNode } = useModal()
 
   const [church, setChurch] = useState<Church | null>(null)
   const [loading, setLoading] = useState(true)
@@ -26,6 +30,17 @@ export default function AdminIgrejaDetailPage() {
   const [editPlan, setEditPlan] = useState('')
   const [editName, setEditName] = useState('')
   const [editMode, setEditMode] = useState(false)
+
+  // Encerrar conta — confirmação inline
+  const [encerrarMode, setEncerrarMode] = useState(false)
+  const [encerrarSlug, setEncerrarSlug] = useState('')
+  const [encerrandoLoading, setEncerrandoLoading] = useState(false)
+
+  // Enviar convite
+  const [inviteMode, setInviteMode] = useState(false)
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteLoading, setInviteLoading] = useState(false)
+  const [inviteMsg, setInviteMsg] = useState('')
 
   async function load() {
     setLoading(true)
@@ -55,7 +70,7 @@ export default function AdminIgrejaDetailPage() {
 
   async function toggleActive() {
     if (!church) return
-    if (!confirm(church.active ? 'Suspender esta igreja?' : 'Reativar esta igreja?')) return
+    if (!await confirm(church.active ? 'Suspender esta igreja?' : 'Reativar esta igreja?')) return
     await fetch(`/api/admin/churches/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -66,13 +81,36 @@ export default function AdminIgrejaDetailPage() {
 
   async function handleEncerrar() {
     if (!church) return
-    if (!confirm(`ATENÇÃO: Encerrar definitivamente "${church.name}"?\n\nO slug "${church.slug}" será liberado para outros clientes. Esta ação não pode ser desfeita.`)) return
+    setEncerrandoLoading(true)
     await fetch(`/api/admin/churches/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ encerrar: true }),
     })
+    setEncerrarMode(false)
+    setEncerrarSlug('')
+    setEncerrandoLoading(false)
     load()
+  }
+
+  async function handleSendInvite() {
+    if (!church) return
+    setInviteLoading(true)
+    setInviteMsg('')
+    const res = await fetch(`/api/admin/churches/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sendInvite: true, inviteEmail }),
+    })
+    setInviteLoading(false)
+    if (res.ok) {
+      setInviteMsg('Convite enviado com sucesso!')
+      setInviteMode(false)
+      setInviteEmail('')
+    } else {
+      const d = await res.json()
+      setInviteMsg(d.error || 'Erro ao enviar.')
+    }
   }
 
   if (loading) return <div style={{ padding: '60px', textAlign: 'center', color: '#64748b' }}>Carregando...</div>
@@ -80,6 +118,8 @@ export default function AdminIgrejaDetailPage() {
 
   const totalRevenue = church.tithes.reduce((s, t) => s + t.amount, 0)
   const monthlyValue = church.plan === 'REDE' ? '199,90' : '79,90'
+  const pastor = church.users[0] ?? null
+  const isEncerrada = church.slug.startsWith('_cancelado-')
 
   return (
     <div style={{ padding: '32px' }}>
@@ -93,7 +133,7 @@ export default function AdminIgrejaDetailPage() {
               <span className={`admin-badge ${church.active ? 'badge-active' : 'badge-inactive'}`}>{church.active ? 'Ativa' : 'Inativa'}</span>
               <span className={`admin-badge ${church.plan === 'REDE' ? 'badge-rede' : 'badge-igreja'}`}>{church.plan}</span>
             </div>
-            <p style={{ fontSize: '13px', color: '#475569', margin: '4px 0 0', fontFamily: 'monospace' }}>{church.slug}.marketcontroll.com</p>
+            <p style={{ fontSize: '13px', color: '#475569', margin: '4px 0 0', fontFamily: 'monospace' }}>{church.slug}.ecclesiaa.com</p>
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
             <button onClick={() => setEditMode(!editMode)} className="admin-btn admin-btn-ghost">
@@ -102,14 +142,56 @@ export default function AdminIgrejaDetailPage() {
             <button onClick={toggleActive} className={`admin-btn ${church.active ? 'admin-btn-danger' : 'admin-btn-ghost'}`}>
               {church.active ? 'Suspender' : 'Reativar'}
             </button>
-            {!church.slug.startsWith('_cancelado-') && (
-              <button onClick={handleEncerrar} className="admin-btn" style={{ background: 'transparent', border: '1px solid #7f1d1d', color: '#fca5a5', fontSize: '12px' }}>
+            {!isEncerrada && (
+              <button
+                onClick={() => { setEncerrarMode(true); setEncerrarSlug('') }}
+                className="admin-btn"
+                style={{ background: 'transparent', border: '1px solid #7f1d1d', color: '#fca5a5', fontSize: '12px' }}
+              >
                 Encerrar conta
               </button>
             )}
           </div>
         </div>
       </div>
+
+      {/* Modal inline — Encerrar conta */}
+      {encerrarMode && (
+        <div style={{ background: '#1a0a0a', border: '1px solid #7f1d1d', borderRadius: '10px', padding: '20px', marginBottom: '24px' }}>
+          <h3 style={{ color: '#fca5a5', fontSize: '15px', fontWeight: '600', margin: '0 0 8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <AlertTriangle size={15} /> Encerrar conta definitivamente
+          </h3>
+          <p style={{ color: '#94a3b8', fontSize: '13px', margin: '0 0 16px', lineHeight: 1.6 }}>
+            Esta ação não pode ser desfeita. O slug <code style={{ color: '#fca5a5' }}>{church.slug}</code> será liberado para outros clientes.<br />
+            Para confirmar, digite o slug da igreja abaixo:
+          </p>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+            <input
+              className="admin-input"
+              placeholder={church.slug}
+              value={encerrarSlug}
+              onChange={e => setEncerrarSlug(e.target.value)}
+              style={{ maxWidth: '260px' }}
+            />
+            <button
+              onClick={handleEncerrar}
+              disabled={encerrarSlug !== church.slug || encerrandoLoading}
+              className="admin-btn"
+              style={{
+                background: encerrarSlug === church.slug ? '#7f1d1d' : 'transparent',
+                border: '1px solid #7f1d1d',
+                color: encerrarSlug === church.slug ? 'white' : '#64748b',
+                cursor: encerrarSlug === church.slug ? 'pointer' : 'not-allowed',
+              }}
+            >
+              {encerrandoLoading ? 'Encerrando...' : 'Confirmar encerramento'}
+            </button>
+            <button onClick={() => { setEncerrarMode(false); setEncerrarSlug('') }} className="admin-btn admin-btn-ghost">
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Edit form */}
       {editMode && (
@@ -170,6 +252,72 @@ export default function AdminIgrejaDetailPage() {
                 <span style={{ fontSize: '13px', color: '#e2e8f0', fontFamily: item.mono ? 'monospace' : undefined }}>{item.value}</span>
               </div>
             ))}
+
+            {/* Pastor / Acesso */}
+            <div style={{ padding: '10px 0 0' }}>
+              <p style={{ fontSize: '12px', color: '#64748b', margin: '0 0 8px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Acesso do pastor</p>
+              {pastor ? (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <p style={{ fontSize: '13px', color: '#e2e8f0', margin: 0 }}>{pastor.name}</p>
+                    <p style={{ fontSize: '12px', color: '#64748b', margin: '2px 0 0' }}>{pastor.email}</p>
+                  </div>
+                  <button
+                    onClick={() => { setInviteMode(true); setInviteEmail(pastor.email) }}
+                    className="admin-btn admin-btn-ghost"
+                    style={{ fontSize: '12px' }}
+                  >
+                    Reenviar acesso
+                  </button>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '13px', color: '#f59e0b' }}>Sem conta criada</span>
+                  <button
+                    onClick={() => setInviteMode(true)}
+                    className="admin-btn admin-btn-primary"
+                    style={{ fontSize: '12px' }}
+                  >
+                    Enviar convite
+                  </button>
+                </div>
+              )}
+
+              {/* Form inline de convite */}
+              {inviteMode && (
+                <div style={{ marginTop: '12px', padding: '14px', background: '#0f172a', borderRadius: '8px' }}>
+                  <p style={{ fontSize: '12px', color: '#94a3b8', margin: '0 0 10px' }}>
+                    {pastor ? 'Reenviar e-mail de acesso para:' : 'E-mail do pastor para enviar o convite:'}
+                  </p>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <input
+                      type="email"
+                      className="admin-input"
+                      placeholder="pastor@email.com"
+                      value={inviteEmail}
+                      onChange={e => setInviteEmail(e.target.value)}
+                      style={{ flex: 1 }}
+                    />
+                    <button
+                      onClick={handleSendInvite}
+                      disabled={inviteLoading || !inviteEmail}
+                      className="admin-btn admin-btn-primary"
+                      style={{ opacity: inviteLoading || !inviteEmail ? 0.6 : 1, whiteSpace: 'nowrap' }}
+                    >
+                      {inviteLoading ? 'Enviando...' : 'Enviar'}
+                    </button>
+                    <button onClick={() => { setInviteMode(false); setInviteMsg('') }} className="admin-btn admin-btn-ghost">
+                      Cancelar
+                    </button>
+                  </div>
+                  {inviteMsg && (
+                    <p style={{ fontSize: '12px', margin: '8px 0 0', color: inviteMsg.includes('sucesso') ? '#4ade80' : '#f87171' }}>
+                      {inviteMsg}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -216,7 +364,7 @@ export default function AdminIgrejaDetailPage() {
             Membros recentes ({church._count.members} total)
           </h2>
           <a
-            href={`https://${church.slug}.marketcontroll.com`}
+            href={`https://${church.slug}.ecclesiaa.com`}
             target="_blank"
             rel="noreferrer"
             style={{ fontSize: '13px', color: '#3b82f6', textDecoration: 'none' }}
@@ -247,6 +395,7 @@ export default function AdminIgrejaDetailPage() {
           </table>
         )}
       </div>
+      {modalNode}
     </div>
   )
 }

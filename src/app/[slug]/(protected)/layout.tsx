@@ -50,7 +50,10 @@ export default async function SlugLayout({ children, params }: Props) {
             Regularize o pagamento para restaurar o acesso.
           </p>
           <p style={{ color: '#a0aec0', fontSize: '12px', margin: 0 }}>
-            Dúvidas? Entre em contato com o suporte.
+            Dúvidas? Fale com o suporte:{' '}
+            <a href="mailto:ecclesiasas014@gmail.com" style={{ color: '#718096' }}>ecclesiasas014@gmail.com</a>
+            {' '}ou{' '}
+            <a href="https://wa.me/5527998673933" target="_blank" rel="noopener noreferrer" style={{ color: '#25D366' }}>WhatsApp</a>
           </p>
         </div>
       </div>
@@ -67,7 +70,7 @@ export default async function SlugLayout({ children, params }: Props) {
     sedeSlug = sede?.slug ?? null
   }
 
-  const isRedeChurch = church.plan === 'REDE' && isOwnChurch
+  const isRedeChurch = church.plan === 'REDE' && isOwnChurch && !church.parentChurchId
 
   return (
     <>

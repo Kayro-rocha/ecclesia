@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import webpush from 'web-push'
+import { sendFcmToMany } from '@/lib/fcm'
 
 webpush.setVapidDetails(
   process.env.VAPID_MAILTO!,
@@ -19,14 +20,8 @@ export async function POST(req: NextRequest) {
   const church = await prisma.church.findUnique({ where: { slug } })
   if (!church) return NextResponse.json({ error: 'Igreja não encontrada' }, { status: 404 })
 
-  const subscriptions = await prisma.pushSubscription.findMany({
-    where: { churchId: church.id },
-  })
-
-  if (subscriptions.length === 0) {
-    return NextResponse.json({ ok: true, sent: 0 })
-  }
-
+  // ── Web Push (PWA) ────────────────────────────────────────────────────────
+  const subscriptions = await prisma.pushSubscription.findMany({ where: { churchId: church.id } })
   const payload = JSON.stringify({ title, body, url: url || '/' })
   let sent = 0
   const toDelete: string[] = []
@@ -41,9 +36,7 @@ export async function POST(req: NextRequest) {
         sent++
       } catch (err: unknown) {
         const status = (err as { statusCode?: number }).statusCode
-        if (status === 410 || status === 404) {
-          toDelete.push(sub.id)
-        }
+        if (status === 410 || status === 404) toDelete.push(sub.id)
       }
     })
   )
@@ -52,5 +45,26 @@ export async function POST(req: NextRequest) {
     await prisma.pushSubscription.deleteMany({ where: { id: { in: toDelete } } })
   }
 
-  return NextResponse.json({ ok: true, sent, total: subscriptions.length })
+  // ── FCM (app nativo Android) ──────────────────────────────────────────────
+  const members = await prisma.member.findMany({
+    where: { churchId: church.id, fcmToken: { not: null } },
+    select: { fcmToken: true },
+  })
+  const fcmTokens = members.map(m => m.fcmToken!).filter(Boolean)
+
+  let fcmSent = 0
+  if (fcmTokens.length > 0 && process.env.FIREBASE_SERVICE_ACCOUNT) {
+    const result = await sendFcmToMany(fcmTokens, title, body)
+    fcmSent = result.sent
+
+    // Remove tokens inválidos
+    if (result.invalid.length > 0) {
+      await prisma.member.updateMany({
+        where: { fcmToken: { in: result.invalid } },
+        data: { fcmToken: null },
+      })
+    }
+  }
+
+  return NextResponse.json({ ok: true, sent: sent + fcmSent, webPush: sent, fcm: fcmSent })
 }

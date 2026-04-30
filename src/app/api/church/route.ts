@@ -15,7 +15,8 @@ export async function GET(req: NextRequest) {
     select: {
       id: true, name: true, slug: true,
       primaryColor: true, secondaryColor: true, logoUrl: true,
-      pixKey: true, whatsappInstance: true, phone: true,
+      pixKey: true, whatsappInstance: true, phone: true, address: true,
+      lat: true, lng: true, checkinRadiusM: true,
     },
   })
 
@@ -23,11 +24,28 @@ export async function GET(req: NextRequest) {
   return NextResponse.json(church)
 }
 
+async function geocode(address: string): Promise<{ lat: number; lng: number } | null> {
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1&countrycodes=br`
+    const res = await fetch(url, { headers: { 'User-Agent': 'Ecclesia/1.0 (contato@ecclesiaa.com)' } })
+    const data = await res.json()
+    if (data?.[0]?.lat) return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) }
+  } catch {}
+  return null
+}
+
 export async function PUT(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
 
-  const { slug, name, primaryColor, secondaryColor, logoUrl, pixKey, whatsappInstance, phone } = await req.json()
+  const { slug, name, primaryColor, secondaryColor, logoUrl, pixKey, whatsappInstance, phone, address } = await req.json()
+
+  // Geocodifica o endereço automaticamente via Nominatim
+  let coords: { lat: number; lng: number } | undefined
+  if (address) {
+    const result = await geocode(address)
+    if (result) coords = result
+  }
 
   const church = await prisma.church.update({
     where: { slug },
@@ -39,7 +57,11 @@ export async function PUT(req: NextRequest) {
       pixKey: pixKey || null,
       whatsappInstance: whatsappInstance || null,
       phone: phone || null,
+      address: address || null,
+      lat: coords?.lat,
+      lng: coords?.lng,
     },
+    select: { id: true, lat: true, lng: true },
   })
 
   return NextResponse.json(church)

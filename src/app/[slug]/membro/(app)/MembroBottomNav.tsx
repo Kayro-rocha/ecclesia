@@ -3,52 +3,38 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { Home, Calendar, Bell, Wallet, User, Users } from 'lucide-react'
+import { Home, Bell, User } from 'lucide-react'
 
 const LS_COMUNICADOS = 'lastReadComunicados'
-const LS_ESCALAS = 'lastReadEscalas'
 
 interface Props {
   slug: string
   latestComunicadoAt: string | null
-  latestEscalaAt: string | null
-  isLeader?: boolean
+  inCell: boolean
 }
 
-export default function MembroBottomNav({ slug, latestComunicadoAt, latestEscalaAt, isLeader }: Props) {
+export default function MembroBottomNav({ slug, latestComunicadoAt }: Props) {
   const pathname = usePathname()
-  const [hasUnreadComunicados, setHasUnreadComunicados] = useState(false)
-  const [hasUnreadEscalas, setHasUnreadEscalas] = useState(false)
+  const [hasUnread, setHasUnread] = useState(false)
 
   useEffect(() => {
     if (latestComunicadoAt) {
       const last = localStorage.getItem(LS_COMUNICADOS)
-      if (!last || new Date(latestComunicadoAt) > new Date(last)) setHasUnreadComunicados(true)
+      if (!last || new Date(latestComunicadoAt) > new Date(last)) setHasUnread(true)
     }
-    if (latestEscalaAt) {
-      const last = localStorage.getItem(LS_ESCALAS)
-      if (!last || new Date(latestEscalaAt) > new Date(last)) setHasUnreadEscalas(true)
-    }
-  }, [latestComunicadoAt, latestEscalaAt])
+  }, [latestComunicadoAt])
 
   useEffect(() => {
     if (pathname.includes('/comunicados')) {
       localStorage.setItem(LS_COMUNICADOS, new Date().toISOString())
-      setHasUnreadComunicados(false)
-    }
-    if (pathname.includes('/escalas')) {
-      localStorage.setItem(LS_ESCALAS, new Date().toISOString())
-      setHasUnreadEscalas(false)
+      setHasUnread(false)
     }
   }, [pathname])
 
   const items = [
-    { href: `/${slug}/membro/home`,        Icon: Home,     label: 'Início' },
-    { href: `/${slug}/membro/escalas`,     Icon: Calendar, label: 'Escalas',  badge: hasUnreadEscalas },
-    ...(isLeader ? [{ href: `/${slug}/membro/celula`, Icon: Users, label: 'Célula', badge: false }] : []),
-    { href: `/${slug}/membro/comunicados`, Icon: Bell,     label: 'Avisos',   badge: hasUnreadComunicados },
-    { href: `/${slug}/membro/dizimo`,      Icon: Wallet,   label: 'Dízimo' },
-    { href: `/${slug}/membro/perfil`,      Icon: User,     label: 'Perfil' },
+    { href: `/${slug}/membro/home`,        Icon: Home, label: 'Início', badge: false },
+    { href: `/${slug}/membro/comunicados`, Icon: Bell, label: 'Avisos', badge: hasUnread },
+    { href: `/${slug}/membro/perfil`,      Icon: User, label: 'Perfil', badge: false },
   ]
 
   return (

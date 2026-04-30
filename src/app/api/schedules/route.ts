@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { hasChurchAccess } from '@/lib/access'
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -10,8 +11,11 @@ export async function POST(req: NextRequest) {
   const body = await req.json()
   const { slug, title, date, department, items } = body
 
-  const church = await prisma.church.findUnique({ where: { slug } })
+  const church = await prisma.church.findUnique({ where: { slug }, select: { id: true, parentChurchId: true } })
   if (!church) return NextResponse.json({ error: 'Igreja não encontrada' }, { status: 404 })
+
+  const user = session.user as any
+  if (!hasChurchAccess(user, church)) return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
 
   const schedule = await prisma.schedule.create({
     data: {

@@ -23,6 +23,8 @@ export default function NovoEventoPage() {
     description: '',
     date: '',
     location: '',
+    locationCep: '',
+    useChurchLocation: true,
     targetGroup: '',
     imageUrl: '',
   })
@@ -127,9 +129,45 @@ export default function NovoEventoPage() {
               <input type="datetime-local" name="date" value={form.date} onChange={handleChange} required />
             </div>
             <div>
-              <label>Local</label>
+              <label>Local (nome)</label>
               <input name="location" value={form.location} onChange={handleChange} placeholder="Ex: Salão principal, Online..." />
             </div>
+          </div>
+
+          {/* Localização para presença automática */}
+          <div style={{ background: '#f7fafc', borderRadius: '10px', padding: '14px 16px', border: '1px solid #e2e8f0' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', marginBottom: 0 }}>
+              <input
+                type="checkbox"
+                checked={form.useChurchLocation}
+                onChange={e => setForm(p => ({ ...p, useChurchLocation: e.target.checked, locationCep: '' }))}
+                style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+              />
+              <span style={{ fontSize: '14px', fontWeight: '500', color: '#2d3748' }}>
+                Evento na sede da igreja
+              </span>
+            </label>
+            <p style={{ fontSize: '12px', color: '#718096', margin: '6px 0 0 26px' }}>
+              Quando marcado, a presença é verificada pela localização cadastrada da igreja.
+            </p>
+
+            {!form.useChurchLocation && (
+              <div style={{ marginTop: '12px' }}>
+                <label style={{ marginBottom: '4px', display: 'block', fontSize: '13px', color: '#4a5568' }}>
+                  CEP do local externo *
+                </label>
+                <input
+                  name="locationCep"
+                  value={form.locationCep}
+                  onChange={handleChange}
+                  placeholder="00000-000"
+                  style={{ maxWidth: '180px' }}
+                />
+                <p style={{ fontSize: '12px', color: '#718096', marginTop: '4px' }}>
+                  O sistema geocodifica automaticamente para verificar a presença por GPS.
+                </p>
+              </div>
+            )}
           </div>
           <div>
             <label>Enviar notificação para</label>

@@ -2,21 +2,27 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useParams } from 'next/navigation'
+import { useModal } from '@/lib/useModal'
 
 export default function ConfiguracoesPage() {
   const params = useParams()
   const slug = params?.slug as string
+  const { confirm, modalNode } = useModal()
 
   const [loading, setLoading] = useState(true)
   const [salvando, setSalvando] = useState(false)
-  const [salvandoSenha, setSalvandoSenha] = useState(false)
   const [msg, setMsg] = useState('')
-  const [msgSenha, setMsgSenha] = useState('')
 
   // Automação WhatsApp
-  const [auto, setAuto] = useState({ enabled: false, triggerDays: 3, message: '' })
+  const [auto, setAuto] = useState({ enabled: false, triggerDays: 3, message: '', autoReply: '', followUpMessage: '', notifyAfterEvent: false })
   const [salvandoAuto, setSalvandoAuto] = useState(false)
   const [msgAuto, setMsgAuto] = useState('')
+
+  // Cultos fixos
+  type Culto = { id: string; weekday: number; hour: number; minute: number }
+  const [cultos, setCultos] = useState<Culto[]>([])
+  const [addingCulto, setAddingCulto] = useState(false)
+  const [novoCulto, setNovoCulto] = useState({ weekday: 0, hour: 19, minute: 0 })
 
   // WhatsApp
   const [waStatus, setWaStatus] = useState<'open' | 'close' | 'connecting' | 'notfound' | 'loading'>('loading')
@@ -30,24 +36,9 @@ export default function ConfiguracoesPage() {
   const [novoGrupo, setNovoGrupo] = useState('')
   const [addingGroup, setAddingGroup] = useState(false)
 
-  const fileRef = useRef<HTMLInputElement>(null)
-  const [uploadingLogo, setUploadingLogo] = useState(false)
-
-  const [form, setForm] = useState({
-    name: '',
-    primaryColor: '#2563eb',
-    secondaryColor: '#1e40af',
-    logoUrl: '',
-    pixKey: '',
-    whatsappInstance: '',
-    phone: '',
-  })
-
-  const [senha, setSenha] = useState({
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: '',
-  })
+  const [form, setForm] = useState({ pixKey: '', phone: '', address: '', cep: '' })
+  const [hasCoords, setHasCoords] = useState(false)
+  const [buscandoCep, setBuscandoCep] = useState(false)
 
   const fetchWaStatus = useCallback(async () => {
     const res = await fetch(`/api/whatsapp/status?slug=${slug}`)
@@ -85,7 +76,7 @@ export default function ConfiguracoesPage() {
   }
 
   async function handleWaDisconnect() {
-    if (!confirm('Desconectar o WhatsApp desta igreja?')) return
+    if (!await confirm('Desconectar o WhatsApp desta igreja?', { title: 'Desconectar WhatsApp', confirmText: 'Desconectar', variant: 'danger' })) return
     setWaDisconnecting(true)
     await fetch('/api/whatsapp/disconnect', {
       method: 'POST',
@@ -100,23 +91,30 @@ export default function ConfiguracoesPage() {
 
   useEffect(() => {
     Promise.all([
-      fetch(`/api/church?slug=${slug}`).then(r => r.json()),
-      fetch(`/api/groups?slug=${slug}`).then(r => r.json()),
-      fetch(`/api/visitor-automation?slug=${slug}`).then(r => r.json()),
-    ]).then(([church, grps, automation]) => {
+      fetch(`/api/church?slug=${slug}`).then(r => r.json()).catch(() => ({})),
+      fetch(`/api/groups?slug=${slug}`).then(r => r.json()).catch(() => []),
+      fetch(`/api/visitor-automation?slug=${slug}`).then(r => r.json()).catch(() => ({})),
+      fetch(`/api/culto-schedules?slug=${slug}`).then(r => r.json()).catch(() => []),
+    ]).then(([church, grps, automation, cultosData]) => {
       setForm({
-        name: church.name || '',
-        primaryColor: church.primaryColor || '#2563eb',
-        secondaryColor: church.secondaryColor || '#1e40af',
-        logoUrl: church.logoUrl || '',
         pixKey: church.pixKey || '',
-        whatsappInstance: church.whatsappInstance || '',
-        phone: church.phone || '',
+        phone: (() => { const d = (church.phone || '').replace(/\D/g, '').slice(0,11); if (d.length > 7) return `(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}`; if (d.length > 2) return `(${d.slice(0,2)}) ${d.slice(2)}`; return d })(),
+        address: church.address || '',
+        cep: '',
       })
+      setHasCoords(church.lat != null && church.lng != null)
       setGroups(Array.isArray(grps) ? grps : [])
       if (automation && !automation.error) {
-        setAuto({ enabled: automation.enabled ?? false, triggerDays: automation.triggerDays ?? 3, message: automation.message ?? '' })
+        setAuto({
+          enabled: automation.enabled ?? false,
+          triggerDays: automation.triggerDays ?? 3,
+          message: automation.message ?? '',
+          autoReply: automation.autoReply ?? '',
+          followUpMessage: automation.followUpMessage ?? '',
+          notifyAfterEvent: automation.notifyAfterEvent ?? false,
+        })
       }
+      if (Array.isArray(cultosData)) setCultos(cultosData)
       setLoading(false)
     })
   }, [slug])
@@ -147,24 +145,6 @@ export default function ConfiguracoesPage() {
     setGroups(prev => prev.filter(g => g.id !== id))
   }
 
-  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const { name, value } = e.target
-    setForm(prev => ({ ...prev, [name]: value }))
-  }
-
-  async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setUploadingLogo(true)
-    const fd = new FormData()
-    fd.append('file', file)
-    fd.append('slug', slug)
-    const res = await fetch('/api/upload', { method: 'POST', body: fd })
-    const data = await res.json()
-    if (data.url) setForm(p => ({ ...p, logoUrl: data.url }))
-    setUploadingLogo(false)
-  }
-
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
     setSalvando(true)
@@ -172,17 +152,18 @@ export default function ConfiguracoesPage() {
     const res = await fetch('/api/church', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...form, slug }),
+      body: JSON.stringify({ ...form, phone: form.phone.replace(/\D/g, ''), slug }),
     })
     setSalvando(false)
     if (res.ok) {
+      const updated = await res.json()
+      setHasCoords(updated.lat != null && updated.lng != null)
       setMsg('Configurações salvas com sucesso!')
       setTimeout(() => setMsg(''), 3000)
     } else {
       setMsg('Erro ao salvar. Tente novamente.')
     }
   }
-
 
   async function handleSaveAuto(e: React.FormEvent) {
     e.preventDefault()
@@ -202,28 +183,44 @@ export default function ConfiguracoesPage() {
     }
   }
 
-  async function handleSenha(e: React.FormEvent) {
-    e.preventDefault()
-    setMsgSenha('')
-    if (senha.newPassword !== senha.confirmPassword) {
-      setMsgSenha('As senhas não coincidem.')
-      return
+  async function buscarCep(cep: string) {
+    const digits = cep.replace(/\D/g, '')
+    if (digits.length !== 8) return
+    setBuscandoCep(true)
+    try {
+      const res = await fetch(`https://viacep.com.br/ws/${digits}/json/`)
+      const data = await res.json()
+      if (!data.erro) {
+        const endereco = [data.logradouro, data.bairro, `${data.localidade}/${data.uf}`]
+          .filter(Boolean).join(', ')
+        setForm(p => ({ ...p, address: endereco, cep: digits }))
+      }
+    } finally {
+      setBuscandoCep(false)
     }
-    setSalvandoSenha(true)
-    const res = await fetch('/api/users/password', {
-      method: 'PUT',
+  }
+
+  async function addCulto() {
+    const res = await fetch('/api/culto-schedules', {
+      method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ currentPassword: senha.currentPassword, newPassword: senha.newPassword }),
+      body: JSON.stringify({ slug, ...novoCulto }),
     })
-    const data = await res.json()
-    setSalvandoSenha(false)
     if (res.ok) {
-      setMsgSenha('Senha alterada com sucesso!')
-      setSenha({ currentPassword: '', newPassword: '', confirmPassword: '' })
-      setTimeout(() => setMsgSenha(''), 3000)
-    } else {
-      setMsgSenha(data.error || 'Erro ao alterar senha.')
+      const created = await res.json()
+      setCultos(prev => [...prev, created].sort((a, b) => a.weekday - b.weekday || a.hour - b.hour))
+      setAddingCulto(false)
+      setNovoCulto({ weekday: 0, hour: 19, minute: 0 })
     }
+  }
+
+  async function removeCulto(id: string) {
+    const res = await fetch('/api/culto-schedules', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    })
+    if (res.ok) setCultos(prev => prev.filter(c => c.id !== id))
   }
 
   if (loading) return (
@@ -234,7 +231,6 @@ export default function ConfiguracoesPage() {
 
   return (
     <div>
-      {/* Header */}
       <div className="page-header">
         <h1 style={{ fontSize: '18px', fontWeight: '600', color: '#1a1a2e', margin: 0 }}>Configurações</h1>
       </div>
@@ -244,103 +240,68 @@ export default function ConfiguracoesPage() {
         {/* ── COLUNA ESQUERDA ── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
 
-          {/* Card: Identidade visual */}
-          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div>
-              <h2 style={{ fontSize: '15px', fontWeight: '600', color: '#1a1a2e', margin: '0 0 2px' }}>Identidade visual</h2>
-              <p style={{ fontSize: '12px', color: '#a0aec0', margin: 0 }}>Nome, logo e cores da sua igreja</p>
-            </div>
-
-            <div>
-              <label>Nome da igreja</label>
-              <input name="name" value={form.name} onChange={handleChange} placeholder="Nome da sua igreja" />
-            </div>
-
-            <div>
-              <label>Logo da igreja</label>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                <div style={{ width: '52px', height: '52px', borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: form.primaryColor, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', fontWeight: '700', color: 'white', border: '2px solid #edf2f7' }}>
-                  {form.logoUrl ? <img src={form.logoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : form.name.charAt(0)}
-                </div>
-                <div style={{ flex: 1 }}>
-                  <input ref={fileRef} type="file" accept="image/*" onChange={handleLogoUpload} style={{ display: 'none' }} />
-                  <button type="button" onClick={() => fileRef.current?.click()} disabled={uploadingLogo}
-                    style={{ padding: '7px 14px', border: '1px solid #e2e8f0', borderRadius: '8px', background: 'white', fontSize: '13px', cursor: 'pointer', color: '#4a5568' }}>
-                    {uploadingLogo ? 'Enviando...' : form.logoUrl ? 'Trocar logo' : 'Enviar logo'}
-                  </button>
-                  {form.logoUrl && (
-                    <button type="button" onClick={() => setForm(p => ({ ...p, logoUrl: '' }))}
-                      style={{ marginLeft: '8px', padding: '7px 12px', border: 'none', borderRadius: '8px', background: '#fff5f5', fontSize: '13px', cursor: 'pointer', color: '#e53e3e' }}>
-                      Remover
-                    </button>
-                  )}
-                  <p style={{ fontSize: '11px', color: '#a0aec0', marginTop: '4px' }}>PNG ou JPG, máx. 2MB.</p>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <label>Cor principal</label>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <input type="color" name="primaryColor" value={form.primaryColor} onChange={handleChange}
-                  style={{ width: '44px', height: '38px', padding: '2px 4px', cursor: 'pointer', borderRadius: '8px' }} />
-                <input name="primaryColor" value={form.primaryColor} onChange={handleChange} placeholder="#2563eb" style={{ flex: 1 }} />
-              </div>
-              <p style={{ fontSize: '12px', color: '#a0aec0', marginTop: '4px' }}>Usada nos botões e destaques do painel</p>
-            </div>
-
-            <div>
-              <label>Cor secundária</label>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <input type="color" name="secondaryColor" value={form.secondaryColor} onChange={handleChange}
-                  style={{ width: '44px', height: '38px', padding: '2px 4px', cursor: 'pointer', borderRadius: '8px' }} />
-                <input name="secondaryColor" value={form.secondaryColor} onChange={handleChange} placeholder="#1e40af" style={{ flex: 1 }} />
-              </div>
-              <p style={{ fontSize: '12px', color: '#a0aec0', marginTop: '4px' }}>Gradiente da tela de login</p>
-            </div>
-
-            {/* Preview */}
-            <div style={{ borderRadius: '10px', overflow: 'hidden', border: '1px solid #edf2f7' }}>
-              <p style={{ fontSize: '11px', color: '#a0aec0', padding: '6px 12px', background: '#f8f9fb', margin: 0, borderBottom: '1px solid #edf2f7' }}>Preview da tela de login</p>
-              <div style={{ height: '72px', background: `linear-gradient(135deg, ${form.primaryColor}, ${form.secondaryColor})`, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
-                <div style={{ width: '34px', height: '34px', borderRadius: '50%', background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '15px', fontWeight: '700', color: 'white', overflow: 'hidden' }}>
-                  {form.logoUrl ? <img src={form.logoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : form.name.charAt(0)}
-                </div>
-                <span style={{ color: 'white', fontWeight: '600', fontSize: '14px' }}>{form.name || 'Nome da Igreja'}</span>
-              </div>
-            </div>
-          </div>
-
           {/* Card: Contato & Financeiro */}
           <form onSubmit={handleSave} className="card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div>
               <h2 style={{ fontSize: '15px', fontWeight: '600', color: '#1a1a2e', margin: '0 0 2px' }}>Contato & Financeiro</h2>
-              <p style={{ fontSize: '12px', color: '#a0aec0', margin: 0 }}>WhatsApp exibido no app e integração de pagamentos</p>
+              <p style={{ fontSize: '12px', color: '#a0aec0', margin: 0 }}>Número de contato, endereço e pagamentos</p>
             </div>
 
             <div>
-              <label>Número de contato da igreja</label>
-              <input name="phone" value={form.phone} onChange={handleChange} placeholder="Ex: (11) 99999-8888" />
-              <p style={{ fontSize: '12px', color: '#a0aec0', marginTop: '4px' }}>Exibido no app dos membros</p>
+              <label>Número de contato da igreja (WhatsApp)</label>
+              <input
+                name="phone"
+                value={form.phone}
+                onChange={e => {
+                  const digits = e.target.value.replace(/\D/g, '').slice(0, 11)
+                  let formatted = digits
+                  if (digits.length > 2) formatted = `(${digits.slice(0,2)}) ${digits.slice(2)}`
+                  if (digits.length > 7) formatted = `(${digits.slice(0,2)}) ${digits.slice(2,7)}-${digits.slice(7)}`
+                  setForm(p => ({ ...p, phone: formatted }))
+                }}
+                placeholder="(27) 99999-8888"
+                inputMode="numeric"
+              />
+              <p style={{ fontSize: '12px', color: '#a0aec0', marginTop: '4px' }}>Apenas números — exibido como botão WhatsApp no app dos membros</p>
             </div>
+
+            <div>
+              <label>CEP da igreja</label>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input
+                  value={form.cep}
+                  onChange={e => { setForm(p => ({ ...p, cep: e.target.value })); buscarCep(e.target.value) }}
+                  placeholder="Ex: 29000-000"
+                  maxLength={9}
+                  style={{ flex: 1 }}
+                />
+                {buscandoCep && <span style={{ fontSize: '12px', color: '#a0aec0', alignSelf: 'center' }}>Buscando...</span>}
+              </div>
+              <p style={{ fontSize: '12px', color: '#a0aec0', marginTop: '4px' }}>Digite o CEP para preencher o endereço automaticamente</p>
+            </div>
+
+            <div>
+              <label>Endereço da igreja</label>
+              <input name="address" value={form.address} onChange={e => setForm(p => ({ ...p, address: e.target.value }))} placeholder="Ex: Rua das Flores, 123, Bairro, Cidade/UF" />
+              <p style={{ fontSize: '12px', color: '#a0aec0', marginTop: '4px' }}>
+                {hasCoords
+                  ? '✓ Localização geocodificada — presença automática ativa'
+                  : 'Salve para geocodificar a localização automaticamente'}
+              </p>
+            </div>
+
 
             <div>
               <label>Chave PIX</label>
-              <input name="pixKey" value={form.pixKey} onChange={handleChange} placeholder="CPF, CNPJ, e-mail, telefone ou chave aleatória" />
+              <input name="pixKey" value={form.pixKey} onChange={e => setForm(p => ({ ...p, pixKey: e.target.value }))} placeholder="CPF, CNPJ, e-mail, telefone ou chave aleatória" />
               <p style={{ fontSize: '12px', color: '#a0aec0', marginTop: '4px' }}>Chave PIX para recebimento de dízimos e ofertas</p>
             </div>
 
-            {msg &&<p style={{ fontSize: '13px', color: msg.includes('sucesso') ? '#276749' : '#e53e3e' }}>{msg}</p>}
-
+            {msg && <p style={{ fontSize: '13px', color: msg.includes('sucesso') ? '#276749' : '#e53e3e' }}>{msg}</p>}
             <button type="submit" disabled={salvando} className="btn-primary">
               {salvando ? 'Salvando...' : 'Salvar configurações'}
             </button>
           </form>
-
-        </div>
-
-        {/* ── COLUNA DIREITA ── */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
 
           {/* Card: Grupos */}
           <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -365,6 +326,11 @@ export default function ConfiguracoesPage() {
               <button type="submit" disabled={addingGroup || !novoGrupo.trim()} className="btn-primary" style={{ whiteSpace: 'nowrap' }}>+ Adicionar</button>
             </form>
           </div>
+
+        </div>
+
+        {/* ── COLUNA DIREITA ── */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
 
           {/* Card: Conexão WhatsApp */}
           <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -423,11 +389,66 @@ export default function ConfiguracoesPage() {
             )}
           </div>
 
+          {/* Card: Cultos fixos */}
+          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div>
+              <h2 style={{ fontSize: '15px', fontWeight: '600', color: '#1a1a2e', margin: '0 0 2px' }}>Cultos fixos da semana</h2>
+              <p style={{ fontSize: '12px', color: '#a0aec0', margin: 0 }}>Usados para disparo automático de mensagens pós-culto</p>
+            </div>
+
+            {cultos.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {cultos.map(c => (
+                  <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: '#f8f9fb', borderRadius: '8px', border: '1px solid #edf2f7' }}>
+                    <span style={{ fontSize: '13px', color: '#1a1a2e', fontWeight: '500' }}>
+                      {['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'][c.weekday]} às {String(c.hour).padStart(2,'0')}:{String(c.minute).padStart(2,'0')}
+                    </span>
+                    <button type="button" onClick={() => removeCulto(c.id)}
+                      style={{ background: 'none', border: 'none', color: '#e53e3e', fontSize: '18px', cursor: 'pointer', lineHeight: 1 }}>×</button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {addingCulto ? (
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                <div>
+                  <label style={{ fontSize: '11px', color: '#a0aec0', display: 'block', marginBottom: '4px' }}>Dia</label>
+                  <select value={novoCulto.weekday} onChange={e => setNovoCulto(p => ({ ...p, weekday: Number(e.target.value) }))}
+                    style={{ borderRadius: '8px', border: '1.5px solid #e2e8f0', padding: '7px 10px', fontSize: '13px', outline: 'none' }}>
+                    {['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'].map((d, i) => (
+                      <option key={i} value={i}>{d}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label style={{ fontSize: '11px', color: '#a0aec0', display: 'block', marginBottom: '4px' }}>Hora</label>
+                  <input type="number" min={0} max={23} value={novoCulto.hour}
+                    onChange={e => setNovoCulto(p => ({ ...p, hour: Number(e.target.value) }))}
+                    style={{ width: '64px', borderRadius: '8px', border: '1.5px solid #e2e8f0', padding: '7px 10px', fontSize: '13px', outline: 'none' }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: '11px', color: '#a0aec0', display: 'block', marginBottom: '4px' }}>Minuto</label>
+                  <input type="number" min={0} max={59} step={5} value={novoCulto.minute}
+                    onChange={e => setNovoCulto(p => ({ ...p, minute: Number(e.target.value) }))}
+                    style={{ width: '64px', borderRadius: '8px', border: '1.5px solid #e2e8f0', padding: '7px 10px', fontSize: '13px', outline: 'none' }} />
+                </div>
+                <button type="button" onClick={addCulto} className="btn-primary" style={{ padding: '8px 16px' }}>Adicionar</button>
+                <button type="button" onClick={() => setAddingCulto(false)} className="btn-secondary" style={{ padding: '8px 12px' }}>Cancelar</button>
+              </div>
+            ) : (
+              <button type="button" onClick={() => setAddingCulto(true)}
+                style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--primary)', background: 'none', border: '1.5px dashed #cbd5e0', borderRadius: '8px', padding: '10px 14px', cursor: 'pointer', width: '100%', justifyContent: 'center' }}>
+                + Adicionar culto
+              </button>
+            )}
+          </div>
+
           {/* Card: Automação de visitantes */}
           <form onSubmit={handleSaveAuto} className="card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div>
               <h2 style={{ fontSize: '15px', fontWeight: '600', color: '#1a1a2e', margin: '0 0 2px' }}>Automação de visitantes</h2>
-              <p style={{ fontSize: '12px', color: '#a0aec0', margin: 0 }}>Mensagem automática via WhatsApp após X dias sem contato</p>
+              <p style={{ fontSize: '12px', color: '#a0aec0', margin: 0 }}>Mensagens automáticas via WhatsApp para acompanhamento</p>
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', background: auto.enabled ? '#f0fff4' : '#f8f9fb', borderRadius: '10px', border: `1px solid ${auto.enabled ? '#c6f6d5' : '#edf2f7'}` }}>
@@ -446,7 +467,7 @@ export default function ConfiguracoesPage() {
             </div>
 
             <div>
-              <label>Dias sem contato para disparar</label>
+              <label>Dias sem contato para disparar follow-up</label>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <input type="number" min={1} max={30} value={auto.triggerDays}
                   onChange={e => setAuto(p => ({ ...p, triggerDays: Number(e.target.value) }))}
@@ -456,44 +477,52 @@ export default function ConfiguracoesPage() {
             </div>
 
             <div>
-              <label>Mensagem automática</label>
+              <label>Mensagem de boas-vindas</label>
               <textarea value={auto.message} onChange={e => setAuto(p => ({ ...p, message: e.target.value }))}
-                placeholder="Olá [nome]! Foi uma alegria ter você conosco..."
-                rows={4}
+                placeholder="Olá [nome]! Foi uma alegria ter você conosco hoje! 😊..."
+                rows={3}
                 style={{ width: '100%', boxSizing: 'border-box', resize: 'vertical', borderRadius: '8px', border: '1.5px solid #e2e8f0', padding: '10px 12px', fontSize: '13px', outline: 'none', fontFamily: 'inherit' }} />
-              <p style={{ fontSize: '12px', color: '#a0aec0', marginTop: '4px' }}>Use <strong>[nome]</strong> para personalizar</p>
+              <p style={{ fontSize: '12px', color: '#a0aec0', marginTop: '4px' }}>Enviada automaticamente ~3 min após o cadastro do visitante. Use <strong>[nome]</strong> para personalizar</p>
+            </div>
+
+            <div>
+              <label>Mensagem de follow-up (após {auto.triggerDays} dias sem contato)</label>
+              <textarea value={auto.followUpMessage} onChange={e => setAuto(p => ({ ...p, followUpMessage: e.target.value }))}
+                placeholder="Olá [nome]! Sentimos sua falta e gostaríamos de saber como você está. 😊"
+                rows={3}
+                style={{ width: '100%', boxSizing: 'border-box', resize: 'vertical', borderRadius: '8px', border: '1.5px solid #e2e8f0', padding: '10px 12px', fontSize: '13px', outline: 'none', fontFamily: 'inherit' }} />
+              <p style={{ fontSize: '12px', color: '#a0aec0', marginTop: '4px' }}>Enviada se o visitante não foi contactado. Use <strong>[nome]</strong> para personalizar</p>
+            </div>
+
+            <div>
+              <label>Resposta automática quando visitante responder</label>
+              <textarea value={auto.autoReply} onChange={e => setAuto(p => ({ ...p, autoReply: e.target.value }))}
+                placeholder="Que bom ouvir você! 😊 Em breve alguém da nossa equipe entrará em contato."
+                rows={2}
+                style={{ width: '100%', boxSizing: 'border-box', resize: 'vertical', borderRadius: '8px', border: '1.5px solid #e2e8f0', padding: '10px 12px', fontSize: '13px', outline: 'none', fontFamily: 'inherit' }} />
+              <p style={{ fontSize: '12px', color: '#a0aec0', marginTop: '4px' }}>Enviada automaticamente se o visitante responder (com silêncio &gt; 4h)</p>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', background: '#f8f9fb', borderRadius: '10px', border: '1px solid #edf2f7' }}>
+              <div>
+                <p style={{ fontSize: '13px', fontWeight: '600', color: '#4a5568', margin: 0 }}>Enviar também após eventos</p>
+                <p style={{ fontSize: '12px', color: '#a0aec0', margin: 0 }}>Dispara mensagem pós-culto para visitantes que confirmaram presença em eventos</p>
+              </div>
+              <button type="button" onClick={() => setAuto(p => ({ ...p, notifyAfterEvent: !p.notifyAfterEvent }))}
+                style={{ width: '44px', height: '24px', borderRadius: '12px', border: 'none', cursor: 'pointer', background: auto.notifyAfterEvent ? '#38a169' : '#cbd5e0', position: 'relative', transition: 'background 0.2s', flexShrink: 0 }}>
+                <span style={{ position: 'absolute', top: '3px', left: auto.notifyAfterEvent ? '22px' : '3px', width: '18px', height: '18px', borderRadius: '50%', background: 'white', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+              </button>
             </div>
 
             {msgAuto && <p style={{ fontSize: '13px', color: msgAuto.includes('sucesso') ? '#276749' : '#e53e3e' }}>{msgAuto}</p>}
-            <button type="submit" disabled={salvandoAuto} className="btn-primary">{salvandoAuto ? 'Salvando...' : 'Salvar automação'}</button>
-          </form>
-
-          {/* Card: Alterar senha */}
-          <form onSubmit={handleSenha} className="card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div>
-              <h2 style={{ fontSize: '15px', fontWeight: '600', color: '#1a1a2e', margin: '0 0 2px' }}>Alterar senha</h2>
-              <p style={{ fontSize: '12px', color: '#a0aec0', margin: 0 }}>Segurança da sua conta de acesso</p>
-            </div>
-
-            <div>
-              <label>Senha atual</label>
-              <input type="password" value={senha.currentPassword} onChange={e => setSenha(p => ({ ...p, currentPassword: e.target.value }))} placeholder="••••••••" />
-            </div>
-            <div>
-              <label>Nova senha</label>
-              <input type="password" value={senha.newPassword} onChange={e => setSenha(p => ({ ...p, newPassword: e.target.value }))} placeholder="Mínimo 6 caracteres" />
-            </div>
-            <div>
-              <label>Confirmar nova senha</label>
-              <input type="password" value={senha.confirmPassword} onChange={e => setSenha(p => ({ ...p, confirmPassword: e.target.value }))} placeholder="••••••••" />
-            </div>
-
-            {msgSenha && <p style={{ fontSize: '13px', color: msgSenha.includes('sucesso') ? '#276749' : '#e53e3e' }}>{msgSenha}</p>}
-            <button type="submit" disabled={salvandoSenha} className="btn-primary">{salvandoSenha ? 'Alterando...' : 'Alterar senha'}</button>
+            <button type="submit" disabled={salvandoAuto} className="btn-primary">
+              {salvandoAuto ? 'Salvando...' : 'Salvar automação'}
+            </button>
           </form>
 
         </div>
       </div>
+      {modalNode}
     </div>
   )
 }

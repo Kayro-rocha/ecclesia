@@ -47,11 +47,13 @@ export async function POST(req: NextRequest) {
   const church = await prisma.church.findUnique({ where: { slug } })
   if (!church) return NextResponse.json({ error: 'Igreja não encontrada' }, { status: 404 })
 
+  const dayStart = new Date(date + 'T00:00:00')
+  const dayEnd = new Date(date + 'T23:59:59')
   const dateObj = new Date(date + 'T12:00:00')
 
-  // Remove registros existentes para este culto (evita duplicatas ao editar)
+  // Remove registros existentes para este culto no dia (abrange auto check-ins com timestamps reais)
   await prisma.attendance.deleteMany({
-    where: { churchId: church.id, date: dateObj, type },
+    where: { churchId: church.id, date: { gte: dayStart, lte: dayEnd }, type },
   })
 
   // Insere os novos
@@ -76,8 +78,9 @@ export async function DELETE(req: NextRequest) {
   const church = await prisma.church.findUnique({ where: { slug } })
   if (!church) return NextResponse.json({ error: 'Igreja não encontrada' }, { status: 404 })
 
-  const dateObj = new Date(date + 'T12:00:00')
-  await prisma.attendance.deleteMany({ where: { churchId: church.id, date: dateObj, type } })
+  const dayStart = new Date(date + 'T00:00:00')
+  const dayEnd = new Date(date + 'T23:59:59')
+  await prisma.attendance.deleteMany({ where: { churchId: church.id, date: { gte: dayStart, lte: dayEnd }, type } })
 
   return NextResponse.json({ ok: true })
 }

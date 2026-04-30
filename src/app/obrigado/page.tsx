@@ -15,8 +15,8 @@ export default function ObrigadoPage() {
       <div style={{ width: '100%', maxWidth: '460px', position: 'relative', zIndex: 1, textAlign: 'center' }}>
 
         {/* Logo */}
-        <div style={{ width: '64px', height: '64px', borderRadius: '18px', margin: '0 auto 20px', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '26px', fontWeight: '800', color: 'white', boxShadow: '0 0 0 4px rgba(99,102,241,0.2), 0 8px 32px rgba(99,102,241,0.35)' }}>
-          E
+        <div style={{ margin: '0 auto 20px', textAlign: 'center' }}>
+          <img src="/logo-ecclesia.png" alt="Ecclesia" style={{ height: '64px', objectFit: 'contain', filter: 'brightness(0) invert(1)' }} />
         </div>
 
         {/* Card */}
@@ -42,8 +42,8 @@ export default function ObrigadoPage() {
 
           <p style={{ margin: 0, fontSize: '13px', color: 'rgba(255,255,255,0.35)', lineHeight: 1.5 }}>
             Não recebeu? Verifique a caixa de spam ou entre em contato:<br />
-            <a href="mailto:suporte@marketcontroll.com" style={{ color: 'rgba(99,102,241,0.8)', textDecoration: 'none' }}>
-              suporte@marketcontroll.com
+            <a href="mailto:ecclesiasas014@gmail.com" style={{ color: 'rgba(99,102,241,0.8)', textDecoration: 'none' }}>
+              ecclesiasas014@gmail.com
             </a>
           </p>
         </div>

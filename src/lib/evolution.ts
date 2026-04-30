@@ -51,6 +51,24 @@ export async function disconnectInstance(instanceName: string): Promise<void> {
   await fetch(`${BASE}/instance/delete/${instanceName}`, { method: 'DELETE', headers: headers() })
 }
 
+export async function registerWebhook(instanceName: string): Promise<void> {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || ''
+  if (!appUrl) return
+  await fetch(`${BASE}/webhook/set/${instanceName}`, {
+    method: 'POST',
+    headers: headers(),
+    body: JSON.stringify({
+      webhook: {
+        enabled: true,
+        url: `${appUrl}/api/webhooks/evolution`,
+        headers: { apikey: KEY },
+        webhookByEvents: false,
+        events: ['MESSAGES_UPSERT'],
+      },
+    }),
+  }).catch(() => {})
+}
+
 export async function sendText(instanceName: string, phone: string, text: string): Promise<boolean> {
   const number = phone.replace(/\D/g, '')
   const withCode = number.startsWith('55') ? number : `55${number}`

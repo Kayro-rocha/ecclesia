@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
+import { useModal } from '@/lib/useModal'
 
 const MODULES = [
   { key: 'membros',      label: 'Membros' },
@@ -29,6 +30,7 @@ interface Gestor {
 export default function GestoresPage() {
   const params = useParams()
   const slug = params?.slug as string
+  const { confirm, modalNode } = useModal()
 
   const [gestores, setGestores] = useState<Gestor[]>([])
   const [members, setMembers] = useState<{ id: string; name: string; email: string | null }[]>([])
@@ -139,7 +141,7 @@ export default function GestoresPage() {
   }
 
   async function remove(id: string, gestorName: string) {
-    if (!confirm(`Remover acesso de "${gestorName}"?`)) return
+    if (!await confirm(`Remover acesso de "${gestorName}"?`, { title: 'Remover gestor', confirmText: 'Remover', variant: 'danger' })) return
     await fetch(`/api/gestores/${id}?slug=${slug}`, { method: 'DELETE' })
     fetchGestores()
   }
@@ -354,6 +356,7 @@ export default function GestoresPage() {
           </div>
         </div>
       )}
+      {modalNode}
     </div>
   )
 }

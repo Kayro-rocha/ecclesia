@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
     data: {
       name,
       slug,
-      plan: 'REDE',
+      plan: 'IGREJA',
       primaryColor: sede.primaryColor,
       parentChurchId: churchId,
     },

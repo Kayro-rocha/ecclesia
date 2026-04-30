@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useModal } from '@/lib/useModal'
 
 interface Member { id: string; name: string; phone?: string | null; group?: string | null }
 
@@ -15,6 +16,7 @@ interface Props {
 
 export default function CelulaDetalheClient({ cellId, slug, members, allMembers, cellLeaderId }: Props) {
   const router = useRouter()
+  const { confirm, modalNode } = useModal()
   const [adding, setAdding] = useState(false)
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState<string | null>(null)
@@ -38,7 +40,7 @@ export default function CelulaDetalheClient({ cellId, slug, members, allMembers,
   }
 
   async function removeMember(memberId: string) {
-    if (!confirm('Remover este membro da célula?')) return
+    if (!await confirm('Remover este membro da célula?', { title: 'Remover membro', confirmText: 'Remover', variant: 'danger' })) return
     setLoading(memberId)
     await fetch(`/api/cells/${cellId}/members?memberId=${memberId}`, { method: 'DELETE' })
     setLoading(null)
@@ -121,6 +123,7 @@ export default function CelulaDetalheClient({ cellId, slug, members, allMembers,
           </p>
         )}
       </div>
+      {modalNode}
     </div>
   )
 }

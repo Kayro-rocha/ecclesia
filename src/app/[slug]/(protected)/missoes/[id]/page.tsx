@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
+import { useModal } from '@/lib/useModal'
 
 interface Donor {
   id: string
@@ -32,6 +33,7 @@ export default function MissaoDetailPage() {
   const params = useParams()
   const slug = params?.slug as string
   const id = params?.id as string
+  const { confirm, modalNode } = useModal()
 
   const [loading, setLoading] = useState(true)
   const [editando, setEditando] = useState(false)
@@ -69,7 +71,7 @@ export default function MissaoDetailPage() {
 
   async function handleNotify() {
     if (!mission) return
-    if (!confirm('Enviar notificação push para todos os membros sobre esta campanha?')) return
+    if (!await confirm('Enviar notificação push para todos os membros sobre esta campanha?', { title: 'Enviar notificação', confirmText: 'Enviar' })) return
     setNotifying(true)
     setNotifyResult(null)
     const res = await fetch('/api/push/send', {
@@ -125,7 +127,7 @@ export default function MissaoDetailPage() {
   }
 
   async function handleDelete() {
-    if (!confirm(`Apagar campanha "${mission?.title}"?\n\nIsso removerá também todos os itens e doações registradas. Esta ação não pode ser desfeita.`)) return
+    if (!await confirm(`Apagar campanha "${mission?.title}"?`, { title: 'Apagar campanha', confirmText: 'Apagar', variant: 'danger' })) return
     const res = await fetch(`/api/missions/${id}`, { method: 'DELETE' })
     if (res.ok) router.push(`/${slug}/missoes`)
   }
@@ -310,6 +312,7 @@ export default function MissaoDetailPage() {
           </>
         )}
       </div>
+      {modalNode}
     </div>
   )
 }

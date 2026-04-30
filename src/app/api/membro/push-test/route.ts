@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getMembroSession } from '@/lib/membro-auth'
 import webpush from 'web-push'
+import { sendFcmNotification } from '@/lib/fcm'
 
 webpush.setVapidDetails(
   process.env.VAPID_MAILTO!,
@@ -12,6 +13,17 @@ webpush.setVapidDetails(
 export async function POST() {
   const session = await getMembroSession()
   if (!session) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+
+  const member = await prisma.member.findUnique({
+    where: { id: session.memberId },
+    select: { fcmToken: true },
+  })
+
+  // FCM (app nativo Android)
+  if (member?.fcmToken) {
+    await sendFcmNotification(member.fcmToken, '🔔 Notificação de teste', 'Funcionou! Suas notificações estão ativas.')
+    return NextResponse.json({ ok: true, sent: 1, channel: 'fcm' })
+  }
 
   const subscriptions = await prisma.pushSubscription.findMany({
     where: { memberId: session.memberId },

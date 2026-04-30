@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
+import { audit } from '@/lib/audit'
 
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -52,7 +53,9 @@ export async function PATCH(req: NextRequest) {
   if (action === 'reset-password') {
     if (!newPassword) return NextResponse.json({ error: 'Senha obrigatória' }, { status: 400 })
     const hash = await bcrypt.hash(newPassword, 10)
-    await prisma.user.update({ where: { id }, data: { password: hash } })
+    const user = await prisma.user.update({ where: { id }, data: { password: hash }, select: { name: true, email: true } })
+    const adminName = session.user?.name || 'Admin'
+    await audit(adminName, 'RESET_SENHA', user.name, `Email: ${user.email}`)
     return NextResponse.json({ ok: true })
   }
 

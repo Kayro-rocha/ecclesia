@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { Calendar, Wallet, Clock, MapPin, Gift, ChevronRight } from 'lucide-react'
+import { Calendar, Wallet, Clock, MapPin, Gift, ChevronRight, Users, Megaphone } from 'lucide-react'
 import { getMembroSession } from '@/lib/membro-auth'
 import { prisma } from '@/lib/prisma'
 import HomeRsvp from './HomeRsvp'
@@ -36,6 +36,12 @@ export default async function MembroHomePage({ params }: Props) {
     { targetGroup: '' },
     ...(member.group ? [{ targetGroup: member.group }] : []),
   ]
+
+  const [leaderCell, memberCell] = await Promise.all([
+    prisma.cell.findFirst({ where: { leaderId: session.memberId, active: true }, select: { id: true } }),
+    prisma.cellMember.findFirst({ where: { memberId: session.memberId, cell: { active: true } }, select: { id: true } }),
+  ])
+  const inCell = !!leaderCell || !!memberCell
 
   const [
     proximaEscala,
@@ -133,13 +139,33 @@ export default async function MembroHomePage({ params }: Props) {
         </p>
       </div>
 
-      {/* ── Pedido de oração ───────────────────────────────────────── */}
-      <HomePrayerButton slug={slug} memberId={session.memberId} />
+      {/* ── Atalhos rápidos ────────────────────────────────────────── */}
+      <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '2px' }}>
+        {[
+          { href: `/${slug}/membro/escalas`,  Icon: Calendar,  label: 'Escalas',  bg: '#eff6ff', color: '#3b82f6' },
+          { href: `/${slug}/membro/eventos`,  Icon: Megaphone, label: 'Eventos',  bg: '#fdf4ff', color: '#9333ea' },
+          { href: `/${slug}/membro/missoes`,  Icon: Gift,      label: 'Missões',  bg: '#fff7ed', color: '#f97316' },
+          { href: `/${slug}/membro/dizimo`,   Icon: Wallet,    label: 'Dízimo',   bg: '#f0fdf4', color: '#22c55e' },
+          ...(inCell ? [{ href: `/${slug}/membro/celula`, Icon: Users, label: 'Célula', bg: '#fef9c3', color: '#ca8a04' }] : []),
+        ].map(({ href, Icon, label, bg, color }) => (
+          <Link key={href} href={href} style={{ textDecoration: 'none', flexShrink: 0 }}>
+            <div style={{ width: '68px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '7px' }}>
+              <div style={{ width: '52px', height: '52px', borderRadius: '16px', background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Icon size={22} color={color} />
+              </div>
+              <span style={{ fontSize: '11px', fontWeight: '600', color: '#475569', textAlign: 'center' }}>{label}</span>
+            </div>
+          </Link>
+        ))}
+      </div>
 
       {/* ── Próximo evento (só se houver evento futuro) ─────────────── */}
       {proximoEvento && (
         <section>
-          <p style={sectionLabel}>PRÓXIMO EVENTO</p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+            <p style={{ ...sectionLabel, margin: 0 }}>PRÓXIMO EVENTO</p>
+            <Link href={`/${slug}/membro/eventos`} style={{ fontSize: '12px', color: color, fontWeight: '600', textDecoration: 'none' }}>Ver todos →</Link>
+          </div>
           <div style={{ background: 'white', borderRadius: '18px', border: '1px solid #bfdbfe', overflow: 'hidden' }}>
             <Link href={`/${slug}/membro/eventos?id=${proximoEvento.id}`} style={{ textDecoration: 'none', display: 'block' }}>
               {proximoEvento.imageUrl && (
@@ -201,7 +227,10 @@ export default async function MembroHomePage({ params }: Props) {
       {/* ── Comunicado recente (só se criado nos últimos 14 dias) ───── */}
       {ultimoComunicado && (
         <section>
-          <p style={sectionLabel}>AVISO RECENTE</p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+            <p style={{ ...sectionLabel, margin: 0 }}>AVISO RECENTE</p>
+            <Link href={`/${slug}/membro/comunicados`} style={{ fontSize: '12px', color: color, fontWeight: '600', textDecoration: 'none' }}>Ver todos →</Link>
+          </div>
           <Link href={`/${slug}/membro/comunicados`} style={{ textDecoration: 'none' }}>
             <div style={{
               background: 'white', borderRadius: '18px',
@@ -293,10 +322,16 @@ export default async function MembroHomePage({ params }: Props) {
         </Link>
       )}
 
+      {/* ── Pedido de oração ───────────────────────────────────────── */}
+      <HomePrayerButton slug={slug} memberId={session.memberId} />
+
       {/* ── Missão ativa (só se houver missão com data futura e < 100%) */}
       {missaoAtiva && mPct < 100 && (
         <section>
-          <p style={sectionLabel}>MISSÃO ATIVA</p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+            <p style={{ ...sectionLabel, margin: 0 }}>MISSÃO ATIVA</p>
+            <Link href={`/${slug}/membro/missoes`} style={{ fontSize: '12px', color: color, fontWeight: '600', textDecoration: 'none' }}>Ver todas →</Link>
+          </div>
           <Link href={`/${slug}/membro/missoes`} style={{ textDecoration: 'none' }}>
             <div style={{
               background: 'white', borderRadius: '18px', padding: '16px',

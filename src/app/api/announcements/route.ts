@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import webpush from 'web-push'
+import { sendFcmToMany } from '@/lib/fcm'
 
 webpush.setVapidDetails(
   process.env.VAPID_MAILTO!,
@@ -70,6 +71,22 @@ export async function POST(req: NextRequest) {
 
     if (toDelete.length > 0) {
       await prisma.pushSubscription.deleteMany({ where: { id: { in: toDelete } } })
+    }
+
+    // FCM (app nativo Android)
+    const fcmTokens = members.map(m => m.fcmToken).filter(Boolean) as string[]
+    if (fcmTokens.length > 0) {
+      const result = await sendFcmToMany(
+        fcmTokens,
+        `📢 ${church.name}`,
+        `${title}: ${texto.length > 80 ? texto.slice(0, 77) + '...' : texto}`
+      )
+      if (result.invalid.length > 0) {
+        await prisma.member.updateMany({
+          where: { fcmToken: { in: result.invalid } },
+          data: { fcmToken: null },
+        })
+      }
     }
 
     // WhatsApp via Evolution API (mantido para igrejas que usam)

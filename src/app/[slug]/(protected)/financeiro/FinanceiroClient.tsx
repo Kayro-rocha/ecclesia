@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useModal } from '@/lib/useModal'
 
 const EXPENSE_LABELS: Record<string, string> = {
   INFRASTRUCTURE: 'Infraestrutura / Aluguel',
@@ -70,6 +71,7 @@ interface Props {
 }
 
 export default function FinanceiroClient({ slug }: Props) {
+  const { confirm, modalNode } = useModal()
   const now = new Date()
   const [tab, setTab] = useState<'geral' | 'receitas' | 'despesas' | 'relatorio'>('geral')
   const [month, setMonth] = useState(now.getMonth() + 1)
@@ -156,14 +158,14 @@ export default function FinanceiroClient({ slug }: Props) {
   }
 
   const deleteExpense = async (id: string) => {
-    if (!confirm('Excluir esta despesa?')) return
+    if (!await confirm('Excluir esta despesa?', { title: 'Excluir despesa', confirmText: 'Excluir', variant: 'danger' })) return
     await fetch(`/api/expenses/${id}`, { method: 'DELETE' })
     fetchExpenses()
     fetchSummary()
   }
 
   const deleteIncome = async (id: string) => {
-    if (!confirm('Excluir esta receita?')) return
+    if (!await confirm('Excluir esta receita?', { title: 'Excluir receita', confirmText: 'Excluir', variant: 'danger' })) return
     await fetch(`/api/incomes/${id}`, { method: 'DELETE' })
     fetchIncomes()
     fetchReceitas()
@@ -560,6 +562,7 @@ export default function FinanceiroClient({ slug }: Props) {
           onSave={() => { fetchIncomes(); fetchReceitas(); fetchSummary(); setShowIncomeModal(false) }}
         />
       )}
+      {modalNode}
     </div>
   )
 }

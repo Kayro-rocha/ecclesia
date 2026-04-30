@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useModal } from '@/lib/useModal'
 
 const DIAS = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
 
@@ -16,6 +17,7 @@ interface Props {
 
 export default function CelulaActions({ cellId, slug, cell, allMembers }: Props) {
   const router = useRouter()
+  const { confirm, modalNode } = useModal()
   const [editing, setEditing] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -57,7 +59,7 @@ export default function CelulaActions({ cellId, slug, cell, allMembers }: Props)
           Editar
         </button>
         <button
-          onClick={() => { if (confirm('Excluir esta célula? Esta ação não pode ser desfeita.')) handleDelete() }}
+          onClick={async () => { if (await confirm('Excluir esta célula?', { title: 'Excluir célula', confirmText: 'Excluir', variant: 'danger' })) handleDelete() }}
           disabled={deleting}
           style={{
             padding: '8px 14px', border: 'none', borderRadius: '8px',
@@ -136,6 +138,7 @@ export default function CelulaActions({ cellId, slug, cell, allMembers }: Props)
           </div>
         </div>
       )}
+      {modalNode}
     </>
   )
 }
